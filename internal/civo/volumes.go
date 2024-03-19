@@ -2,20 +2,24 @@ package civo
 
 import (
 	"fmt"
-	"github.com/civo/civogo"
 )
 
-func (c *CivoConfiguration) NukeVolumes(client *civogo.Client) {
-	vols, err := client.ListVolumes()
+func (c *CivoConfiguration) NukeVolumes(CivoCmdOptions *CivoCmdOptions) error {
+	vols, err := c.Client.ListVolumes()
 	if err != nil {
 		fmt.Println("err getting volumes", err)
 	}
 
 	for _, v := range vols {
-		res, err := client.DeleteVolume(v.ID)
-		if err != nil {
-			fmt.Println("err getting volumes", err)
+		if CivoCmdOptions.Nuke {
+			res, err := c.Client.DeleteVolume(v.ID)
+			if err != nil {
+				fmt.Println("err getting volumes", err)
+			}
+			fmt.Println("success delete: ", res.Result)
+		} else {
+			fmt.Printf("nuke set to %t, not removing volume %s\n", CivoCmdOptions.Nuke, v.ID)
 		}
-		fmt.Println("success delete: ", &res.ErrorCode)
 	}
+	return nil
 }

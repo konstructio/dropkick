@@ -6,9 +6,9 @@ import (
 	"github.com/civo/civogo"
 )
 
-func (c *CivoConfiguration) NukeObjectStores(client *civogo.Client) {
+func (c *CivoConfiguration) NukeObjectStores(CivoCmdOptions *CivoCmdOptions) error {
 
-	pageOfItems, err := client.ListObjectStores()
+	pageOfItems, err := c.Client.ListObjectStores()
 	if err != nil {
 		fmt.Println("err getting pg items")
 	}
@@ -16,25 +16,27 @@ func (c *CivoConfiguration) NukeObjectStores(client *civogo.Client) {
 
 	i := 0
 	for i < pageOfItems.Pages {
-		deletePageOfObjectStores(c.Client)
-		deletePageOfObjectStoreCredentials(c.Client)
+		deletePageOfObjectStores(c.Client, CivoCmdOptions)
+		deletePageOfObjectStoreCredentials(c.Client, CivoCmdOptions)
 		i++
 	}
+	return nil
 }
 
-func (c *CivoConfiguration) NukeObjectStoreCredentials(client *civogo.Client) {
-	pageOfCredItems, err := client.ListObjectStoreCredentials()
+func (c *CivoConfiguration) NukeObjectStoreCredentials(CivoCmdOptions *CivoCmdOptions) error {
+	pageOfCredItems, err := c.Client.ListObjectStoreCredentials()
 	if err != nil {
 		fmt.Println("err getting pg items")
 	}
 	j := 0
 	for j < pageOfCredItems.Pages {
-		deletePageOfObjectStoreCredentials(c.Client)
+		deletePageOfObjectStoreCredentials(c.Client, CivoCmdOptions)
 		j++
 	}
+	return nil
 }
 
-func deletePageOfObjectStores(client *civogo.Client) {
+func deletePageOfObjectStores(client *civogo.Client, CivoCmdOptions *CivoCmdOptions) {
 
 	pageOfItems, err := client.ListObjectStores()
 	if err != nil {
@@ -42,15 +44,20 @@ func deletePageOfObjectStores(client *civogo.Client) {
 	}
 
 	for _, os := range pageOfItems.Items {
-		_, err := client.DeleteObjectStore(os.ID)
-		if err != nil {
-			fmt.Println("err")
+		if CivoCmdOptions.Nuke {
+			_, err := client.DeleteObjectStore(os.ID)
+			if err != nil {
+				fmt.Println("err")
+			}
+			fmt.Println("deleted object store ", os.Name)
+
+		} else {
+			fmt.Printf("nuke set to %t, not removing objectstore %s\n", CivoCmdOptions.Nuke, os.ID)
 		}
-		fmt.Println("deleted object store ", os.Name)
 	}
 }
 
-func deletePageOfObjectStoreCredentials(client *civogo.Client) {
+func deletePageOfObjectStoreCredentials(client *civogo.Client, CivoCmdOptions *CivoCmdOptions) {
 
 	pageOfItems, err := client.ListObjectStoreCredentials()
 	if err != nil {
@@ -58,10 +65,15 @@ func deletePageOfObjectStoreCredentials(client *civogo.Client) {
 	}
 
 	for _, os := range pageOfItems.Items {
-		_, err := client.DeleteObjectStoreCredential(os.ID)
-		if err != nil {
-			fmt.Println("err", err)
+		if CivoCmdOptions.Nuke {
+			_, err := client.DeleteObjectStoreCredential(os.ID)
+			if err != nil {
+				fmt.Println("err", err)
+			}
+			fmt.Println("deleted object store credential", os.Name)
+
+		} else {
+			fmt.Printf("nuke set to %t, not removing objectstore credential %s\n", CivoCmdOptions.Nuke, os.ID)
 		}
-		fmt.Println("deleted object store credential", os.Name)
 	}
 }
