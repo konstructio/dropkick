@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"context"
 	"os"
 
 	"github.com/kubefirst/dropkick/internal/civo"
@@ -20,45 +20,44 @@ var civoCmd = &cobra.Command{
 		if os.Getenv("CIVO_TOKEN") == "" {
 			log.Fatal("no civoCmd token present")
 		}
-		fmt.Println(CivoCmdOptions)
 
-		// civoConf := civoCmd.CivoConfiguration{
-		// 	Client:  civoCmd.NewClient(os.Getenv("CIVO_TOKEN"), CivoCmdOptions.Region),
-		// 	Context: context.Background(),
-		// }
+		civoConf := civo.CivoConfiguration{
+			Client:  civo.NewClient(os.Getenv("CIVO_TOKEN"), CivoCmdOptions.Region),
+			Context: context.Background(),
+		}
 
-		// err := civoConf.NukeKubernetesClusters(CivoCmdOptions)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		err := civoConf.NukeKubernetesClusters(CivoCmdOptions)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// err = civoConf.NukeObjectStores(CivoCmdOptions)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		err = civoConf.NukeObjectStores(CivoCmdOptions)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// err = civoConf.NukeObjectStoreCredentials(CivoCmdOptions)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		err = civoConf.NukeObjectStoreCredentials(CivoCmdOptions)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// err = civoConf.NukeVolumes(CivoCmdOptions)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		err = civoConf.NukeVolumes(CivoCmdOptions)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// err = civoConf.NukeNetworks(CivoCmdOptions)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		err = civoConf.NukeNetworks(CivoCmdOptions)
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(civoCmd)
-	civoCmd.PersistentFlags().BoolVar(&CivoCmdOptions.Nuke, "nuke", CivoCmdOptions.Nuke, "required to confirm deletion of resources")
+	civoCmd.Flags().BoolVar(&CivoCmdOptions.Nuke, "nuke", CivoCmdOptions.Nuke, "required to confirm deletion of resources")
 
-	civoCmd.PersistentFlags().StringVar(&CivoCmdOptions.Region, "region", CivoCmdOptions.Region, "the civo region to clean")
+	civoCmd.Flags().StringVar(&CivoCmdOptions.Region, "region", CivoCmdOptions.Region, "the civo region to clean")
 	err := civoCmd.MarkFlagRequired("region")
 	if err != nil {
 		log.Fatal(err)
