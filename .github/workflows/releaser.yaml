@@ -38,7 +38,8 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 
+          CLI_VERSION: $GITHUB_REF_NAME
 
 #  # maybe for automated cloud cleanup..          
   # release-docker:
