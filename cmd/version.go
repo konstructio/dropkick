@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2021-2023, Kubefirst
+Copyright (C) 2021-2024, konstruct
 
 This program is licensed under MIT.
 See the LICENSE file for more details.

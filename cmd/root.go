@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 kubefirst info@kubefirst.io
+Copyright © 2024 konstruct info@konstructio.io
 
 */
 package cmd

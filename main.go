@@ -1,10 +1,10 @@
 /*
-Copyright © 2024 kubefirst info@kubefirst.io
+Copyright © 2024 konstruct info@konstructio.io
 
 */
 package main
 
-import "github.com/kubefirst/dropkick/cmd"
+import "github.com/konstructio/dropkick/cmd"
 
 func main() {
 	cmd.Execute()

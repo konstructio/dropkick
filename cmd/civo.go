@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/kubefirst/dropkick/internal/civo"
+	"github.com/konstructio/dropkick/internal/civo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
