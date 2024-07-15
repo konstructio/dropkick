@@ -17,7 +17,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -X github.com/konstructio/dropkick/pkg/configs.Version=${CLI_VERSION}
+      - -X github.com/konstructio/dropkick/pkg/configs.Version={{.Version}}
 
 archives:
   - format: tar.gz
