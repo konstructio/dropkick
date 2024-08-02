@@ -4,22 +4,28 @@ import (
 	"fmt"
 )
 
-func (c *CivoConfiguration) NukeNetworks(CivoCmdOptions *CivoCmdOptions) error {
-	networks, err := c.Client.ListNetworks()
+// NukeNetworks deletes all networks associated with the Civo client.
+// It returns an error if the deletion process encounters any issues.
+func (c *Civo) NukeNetworks() error {
+	networks, err := c.client.ListNetworks()
 	if err != nil {
-		fmt.Println("err getting networks", err)
+		return fmt.Errorf("unable to list networks: %w", err)
 	}
 
-	for _, n := range networks {
-		if CivoCmdOptions.Nuke {
-			res, err := c.Client.DeleteNetwork(n.ID)
+	for _, network := range networks {
+		if c.nuke {
+			res, err := c.client.DeleteNetwork(network.ID)
 			if err != nil {
-				fmt.Println("err getting networks", err)
+				return fmt.Errorf("unable to delete network %q: %w", network.ID, err)
 			}
-			fmt.Println("success delete: ", res.Result)
+
+			if res.ErrorCode != "200" {
+				return fmt.Errorf("Civo returned an error code %s when deleting network %q: %s", res.ErrorCode, network.ID, res.ErrorDetails)
+			}
 		} else {
-			fmt.Printf("nuke set to %t, not removing network %s\n", CivoCmdOptions.Nuke, n.ID)
+			c.logger.Printf("refusing to delete network %q: nuke is not enabled", network.ID)
 		}
 	}
+
 	return nil
 }

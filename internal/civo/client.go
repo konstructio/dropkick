@@ -1,11 +1,99 @@
 package civo
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/logger"
 )
 
-func NewClient(civoToken string, region string) *civogo.Client {
-	civoClient, _ := civogo.NewClient(civoToken, region)
+// Civo is a client for the Civo API.
+type Civo struct {
+	client  *civogo.Client  // The underlying Civo API client.
+	context context.Context // The context for API requests.
+	nuke    bool            // Whether to nuke resources.
+	region  string          // The region for API requests.
+	token   string          // The API token.
+	logger  *logger.Logger  // The logger instance.
+}
 
-	return civoClient
+// CivoOption is a function that configures a Civo.
+type CivoOption func(*Civo) error
+
+// WithLogger sets the logger for a Civo.
+func WithLogger(logger *logger.Logger) CivoOption {
+	return func(c *Civo) error {
+		c.logger = logger
+		return nil
+	}
+}
+
+// WithToken sets the API token for a Civo.
+func WithToken(token string) CivoOption {
+	return func(c *Civo) error {
+		c.token = token
+		return nil
+	}
+}
+
+// WithRegion sets the region for a Civo.
+func WithRegion(region string) CivoOption {
+	return func(c *Civo) error {
+		c.region = region
+		return nil
+	}
+}
+
+// WithNuke sets whether to nuke resources for a Civo.
+func WithNuke(nuke bool) CivoOption {
+	return func(c *Civo) error {
+		c.nuke = nuke
+		return nil
+	}
+}
+
+// WithContext sets the context for a Civo.
+func WithContext(ctx context.Context) CivoOption {
+	return func(c *Civo) error {
+		c.context = ctx
+		return nil
+	}
+}
+
+// New creates a new Civo with the given options.
+// It returns an error if the token or region is not set, or if it fails to create the underlying Civo API client.
+func New(opts ...CivoOption) (*Civo, error) {
+	c := &Civo{}
+
+	for _, opt := range opts {
+		if err := opt(c); err != nil {
+			return nil, fmt.Errorf("unable to apply option: %w", err)
+		}
+	}
+
+	if c.token == "" {
+		return nil, fmt.Errorf("required token not found")
+	}
+
+	if c.region == "" {
+		return nil, fmt.Errorf("required region not set")
+	}
+
+	civoClient, err := civogo.NewClient(c.token, c.region)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create new client: %w", err)
+	}
+
+	c.client = civoClient
+
+	if c.context == nil {
+		c.context = context.Background()
+	}
+
+	if c.logger == nil {
+		c.logger = logger.None
+	}
+
+	return c, nil
 }

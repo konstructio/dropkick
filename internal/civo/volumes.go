@@ -4,21 +4,26 @@ import (
 	"fmt"
 )
 
-func (c *CivoConfiguration) NukeVolumes(CivoCmdOptions *CivoCmdOptions) error {
-	vols, err := c.Client.ListVolumes()
+// NukeVolumes deletes all volumes associated with the Civo client.
+// It returns an error if the deletion process encounters any issues.
+func (c *Civo) NukeVolumes() error {
+	volumes, err := c.client.ListVolumes()
 	if err != nil {
-		fmt.Println("err getting volumes", err)
+		return fmt.Errorf("unable to list volumes: %w", err)
 	}
 
-	for _, v := range vols {
-		if CivoCmdOptions.Nuke {
-			res, err := c.Client.DeleteVolume(v.ID)
+	for _, volume := range volumes {
+		if c.nuke {
+			res, err := c.client.DeleteVolume(volume.ID)
 			if err != nil {
-				fmt.Println("err getting volumes", err)
+				return fmt.Errorf("unable to delete volume %s: %w", volume.ID, err)
 			}
-			fmt.Println("success delete: ", res.Result)
+
+			if res.ErrorCode != "200" {
+				return fmt.Errorf("Civo returned an error code %s when deleting volume %s: %s", res.ErrorCode, volume.ID, res.ErrorDetails)
+			}
 		} else {
-			fmt.Printf("nuke set to %t, not removing volume %s\n", CivoCmdOptions.Nuke, v.ID)
+			c.logger.Printf("refusing to delete volume %s: nuke is not enabled", volume.ID)
 		}
 	}
 	return nil
