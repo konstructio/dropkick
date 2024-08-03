@@ -9,14 +9,40 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+var supportedSpacesRegions = [...]string{
+	"nyc3",
+	"sfo2",
+	"sfo3",
+	"ams3",
+	"fra1",
+	"sgp1",
+	"blr1",
+	"syd1",
+}
+
+func generateSpacesEndpoint(region string) (string, error) {
+	for _, r := range supportedSpacesRegions {
+		if r == region {
+			return fmt.Sprintf("https://%s.digitaloceanspaces.com", region), nil
+		}
+	}
+
+	return "", fmt.Errorf("unsupported region %q for DigitalOcean Spaces", region)
+}
+
 func (d *DigitalOcean) NukeS3Storage() error {
 	if d.spacesAccessKey == "" || d.spacesSecretKey == "" || d.spacesRegion == "" {
 		return fmt.Errorf("DigitalOcean spaces credentials are not set")
 	}
 
+	endpoint, err := generateSpacesEndpoint(d.spacesRegion)
+	if err != nil {
+		return err // nolint: wrapcheck // no need to wrap this error
+	}
+
 	sess, err := session.NewSession(&aws.Config{
 		Region:           aws.String(d.spacesRegion),
-		Endpoint:         aws.String(fmt.Sprintf("https://%s.digitaloceanspaces.com", d.spacesRegion)),
+		Endpoint:         aws.String(endpoint),
 		Credentials:      credentials.NewStaticCredentials(d.spacesAccessKey, d.spacesSecretKey, ""),
 		S3ForcePathStyle: aws.Bool(false),
 	})
