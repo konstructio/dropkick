@@ -10,11 +10,14 @@ import (
 
 // DigitalOcean is a client for the DigitalOcean API.
 type DigitalOcean struct {
-	client  *godo.Client    // The underlying DigitalOcean API client.
-	context context.Context // The context for API requests.
-	nuke    bool            // Whether to nuke resources.
-	token   string          // The API token.
-	logger  *logger.Logger  // The logger instance.
+	client          *godo.Client    // The underlying DigitalOcean API client.
+	context         context.Context // The context for API requests.
+	nuke            bool            // Whether to nuke resources.
+	token           string          // The API token.
+	logger          *logger.Logger  // The logger instance.
+	spacesAccessKey string          // The access key for Spaces.
+	spacesSecretKey string          // The secret key for Spaces.
+	spacesRegion    string          // The region for Spaces.
 }
 
 // DigitalOceanOption is a function that configures a DigitalOcean.
@@ -48,6 +51,15 @@ func WithNuke(nuke bool) DigitalOceanOption {
 func WithContext(ctx context.Context) DigitalOceanOption {
 	return func(c *DigitalOcean) error {
 		c.context = ctx
+		return nil
+	}
+}
+
+func WithS3Storage(accessKey, secretKey, region string) DigitalOceanOption {
+	return func(c *DigitalOcean) error {
+		c.spacesAccessKey = accessKey
+		c.spacesSecretKey = secretKey
+		c.spacesRegion = region
 		return nil
 	}
 }
