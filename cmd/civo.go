@@ -22,7 +22,7 @@ func getCivoCommand() *cobra.Command {
 		Short: "clean civo resources",
 		Long:  `clean civo resources`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCivo(cmd.OutOrStdout(), region, nuke)
+			return runCivo(cmd.OutOrStdout(), region, os.Getenv("CIVO_TOKEN"), nuke)
 		},
 	}
 
@@ -36,8 +36,7 @@ func getCivoCommand() *cobra.Command {
 	return civoCmd
 }
 
-func runCivo(output io.Writer, region string, nuke bool) error {
-	token := os.Getenv("CIVO_TOKEN")
+func runCivo(output io.Writer, region, token string, nuke bool) error {
 	if token == "" {
 		return fmt.Errorf("required environment variable $CIVO_TOKEN not found")
 	}

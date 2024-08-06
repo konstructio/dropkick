@@ -1,0 +1,85 @@
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"io"
+
+	"github.com/konstructio/dropkick/internal/digitalocean"
+	"github.com/konstructio/dropkick/internal/logger"
+	"github.com/konstructio/dropkick/pkg/env"
+	"github.com/spf13/cobra"
+)
+
+type doOptions struct {
+	nuke            bool
+	token           string
+	spacesAccessKey string
+	spacesSecretKey string
+	spacesRegion    string
+}
+
+func getDigitalOceanCommand() *cobra.Command {
+	var opts doOptions
+
+	cmd := &cobra.Command{
+		Use:   "digitalocean",
+		Short: "clean digitalocean resources",
+		Long:  `clean digitalocean resources`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.token = env.GetFirstNotEmpty("DIGITALOCEAN_TOKEN")
+			opts.spacesAccessKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_ACCESS_KEY", "SPACES_KEY")
+			opts.spacesSecretKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_SECRET_KEY", "SPACES_SECRET")
+			opts.spacesRegion = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_REGION", "SPACES_REGION")
+			return runDigitalOcean(cmd.OutOrStdout(), opts)
+		},
+	}
+
+	cmd.Flags().BoolVar(&opts.nuke, "nuke", false, "required to confirm deletion of resources")
+	return cmd
+}
+
+func runDigitalOcean(output io.Writer, opts doOptions) error {
+	// Check token
+	if opts.token == "" {
+		return fmt.Errorf("required environment variable $DIGITALOCEAN_TOKEN not set")
+	}
+
+	// Check spaces credentials
+	if opts.spacesAccessKey == "" {
+		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_ACCESS_KEY or $SPACES_KEY not set")
+	}
+	if opts.spacesSecretKey == "" {
+		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_SECRET_KEY or $SPACES_SECRET not set")
+	}
+	if opts.spacesRegion == "" {
+		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_REGION or $SPACES_REGION not set")
+	}
+
+	// Create DigitalOcean client
+	client, err := digitalocean.New(
+		digitalocean.WithToken(opts.token),
+		digitalocean.WithS3Storage(opts.spacesAccessKey, opts.spacesSecretKey, opts.spacesRegion),
+		digitalocean.WithNuke(opts.nuke),
+		digitalocean.WithContext(context.Background()),
+		digitalocean.WithLogger(logger.New(output)),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create new client: %w", err)
+	}
+
+	// Cleanup resources
+	if err := client.NukeKubernetesClusters(); err != nil {
+		return fmt.Errorf("unable to cleanup Kubernetes clusters: %w", err)
+	}
+
+	if err := client.NukeS3Storage(); err != nil {
+		return fmt.Errorf("unable to cleanup spaces storage: %w", err)
+	}
+
+	if err := client.NukeVolumes(); err != nil {
+		return fmt.Errorf("unable to cleanup volumes: %w", err)
+	}
+
+	return nil
+}

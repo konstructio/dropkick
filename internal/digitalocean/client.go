@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/digitalocean/godo"
 	"github.com/konstructio/dropkick/internal/logger"
 )
@@ -11,6 +15,7 @@ import (
 // DigitalOcean is a client for the DigitalOcean API.
 type DigitalOcean struct {
 	client          *godo.Client    // The underlying DigitalOcean API client.
+	s3svc           *s3.S3          // The underlying DigitalOcean Spaces API client.
 	context         context.Context // The context for API requests.
 	nuke            bool            // Whether to nuke resources.
 	token           string          // The API token.
@@ -94,9 +99,59 @@ func New(opts ...DigitalOceanOption) (*DigitalOcean, error) {
 		c.context = context.Background()
 	}
 
+	// Set up S3 storage
+	if c.spacesAccessKey == "" || c.spacesSecretKey == "" || c.spacesRegion == "" {
+		return nil, fmt.Errorf("DigitalOcean spaces credentials are not set")
+	}
+
+	endpoint, err := generateSpacesEndpoint(c.spacesRegion)
+	if err != nil {
+		return nil, err // nolint: wrapcheck // no need to wrap this error
+	}
+
+	sess, err := session.NewSession(&aws.Config{
+		Region:           aws.String(c.spacesRegion),
+		Endpoint:         aws.String(endpoint),
+		Credentials:      credentials.NewStaticCredentials(c.spacesAccessKey, c.spacesSecretKey, ""),
+		S3ForcePathStyle: aws.Bool(false),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to create Spaces session against DigitalOcean API: %w", err)
+	}
+
+	s3svc := s3.New(sess)
+	c.s3svc = s3svc
+
+	// Validate s3 credentials work
+	_, err = s3svc.ListBuckets(&s3.ListBucketsInput{})
+	if err != nil {
+		return nil, fmt.Errorf("unable to validate Spaces credentials: unable to list buckets in the account: %w", err)
+	}
+
 	if c.logger == nil {
 		c.logger = logger.None
 	}
 
 	return c, nil
+}
+
+func generateSpacesEndpoint(region string) (string, error) {
+	supportedSpacesRegions := [...]string{
+		"nyc3",
+		"sfo2",
+		"sfo3",
+		"ams3",
+		"fra1",
+		"sgp1",
+		"blr1",
+		"syd1",
+	}
+
+	for _, r := range supportedSpacesRegions {
+		if r == region {
+			return fmt.Sprintf("https://%s.digitaloceanspaces.com", region), nil
+		}
+	}
+
+	return "", fmt.Errorf("unsupported region %q for DigitalOcean Spaces", region)
 }
