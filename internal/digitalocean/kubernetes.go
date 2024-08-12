@@ -35,7 +35,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 				if err != nil {
 					return fmt.Errorf("unable to delete cluster %q: %w", cluster.ID, err)
 				}
-				outputwriter.WriteStdout("deleted cluster %q", cluster.ID)
+				outputwriter.WriteStdoutf("deleted cluster %q", cluster.ID)
 			} else {
 				d.logger.Printf("refusing to delete cluster %q: nuke is not enabled", cluster.ID)
 			}
@@ -55,7 +55,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 					if err != nil {
 						return fmt.Errorf("unable to delete cluster %q loadbalancer %q: %w", cluster.ID, loadbalancer.ID, err)
 					}
-					outputwriter.WriteStdout("deleted loadbalancer %q for cluster %q", loadbalancer.ID, cluster.ID)
+					outputwriter.WriteStdoutf("deleted loadbalancer %q for cluster %q", loadbalancer.ID, cluster.ID)
 				} else {
 					d.logger.Printf("refusing to delete loadbalancer %q for cluster %q: nuke is not enabled", loadbalancer.ID, cluster.ID)
 				}
@@ -69,7 +69,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 					if err != nil {
 						return fmt.Errorf("unable to delete cluster %q volume %q: %w", cluster.ID, volume.ID, err)
 					}
-					outputwriter.WriteStdout("deleted volume %q for cluster %q", volume.ID, cluster.ID)
+					outputwriter.WriteStdoutf("deleted volume %q for cluster %q", volume.ID, cluster.ID)
 				} else {
 					d.logger.Printf("refusing to delete volume %q for cluster %q: nuke is not enabled", volume.ID, cluster.ID)
 				}
@@ -83,12 +83,11 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 					if err != nil {
 						return fmt.Errorf("unable to delete cluster %q volume snapshot %q: %w", cluster.ID, snapshot.ID, err)
 					}
-					outputwriter.WriteStdout("deleted volume snapshot %q for cluster %q", snapshot.ID, cluster.ID)
+					outputwriter.WriteStdoutf("deleted volume snapshot %q for cluster %q", snapshot.ID, cluster.ID)
 				} else {
 					d.logger.Printf("refusing to delete volume snapshot %q for cluster %q: nuke is not enabled", snapshot.ID, cluster.ID)
 				}
 			}
-
 		}
 
 		// Exit if we've reached the last page.

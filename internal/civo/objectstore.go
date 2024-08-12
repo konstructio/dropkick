@@ -35,7 +35,7 @@ func (c *Civo) NukeObjectStores() error {
 				if status.ErrorCode != "200" {
 					return fmt.Errorf("Civo returned an error code %s when deleting object store %q: %s", status.ErrorCode, objStore.ID, status.ErrorDetails)
 				}
-				outputwriter.WriteStdout("deleted object store %q", objStore.ID)
+				outputwriter.WriteStdoutf("deleted object store %q", objStore.ID)
 
 				c.logger.Printf("deleting object store credential %q", objStore.ID)
 				status, err = c.client.DeleteObjectStoreCredential(objStore.ID)
@@ -46,7 +46,7 @@ func (c *Civo) NukeObjectStores() error {
 				if status.ErrorCode != "200" {
 					return fmt.Errorf("Civo returned an error code %s when deleting object store credential %q: %s", status.ErrorCode, objStore.ID, status.ErrorDetails)
 				}
-				outputwriter.WriteStdout("deleted object store credential %q", objStore.ID)
+				outputwriter.WriteStdoutf("deleted object store credential %q", objStore.ID)
 			} else {
 				fmt.Printf("refusing to delete object store %q: nuke is not enabled\n", objStore.ID)
 			}
@@ -78,7 +78,7 @@ func (c *Civo) NukeObjectStoreCredentials() error {
 				if status.ErrorCode != "200" {
 					return fmt.Errorf("Civo returned an error code %s when deleting object store credential %q: %s", status.ErrorCode, objStoreCred.ID, status.ErrorDetails)
 				}
-				outputwriter.WriteStdout("deleted object store credential %q", objStoreCred.ID)
+				outputwriter.WriteStdoutf("deleted object store credential %q", objStoreCred.ID)
 			} else {
 				fmt.Printf("refusing to delete object store credential %q: nuke is not enabled\n", objStoreCred.ID)
 			}

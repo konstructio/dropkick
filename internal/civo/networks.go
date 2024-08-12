@@ -32,7 +32,7 @@ func (c *Civo) NukeNetworks() error {
 				return fmt.Errorf("Civo returned an error code %s when deleting network %q: %s", res.ErrorCode, network.ID, res.ErrorDetails)
 			}
 
-			outputwriter.WriteStdout("deleted network %q", network.ID)
+			outputwriter.WriteStdoutf("deleted network %q", network.ID)
 		} else {
 			c.logger.Printf("refusing to delete network %q: nuke is not enabled", network.ID)
 		}

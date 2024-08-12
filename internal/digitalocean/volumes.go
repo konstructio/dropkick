@@ -26,7 +26,7 @@ func (d *DigitalOcean) NukeVolumes() error {
 			if err != nil {
 				return fmt.Errorf("unable to delete volume %s: %w", volume.ID, err)
 			}
-			outputwriter.WriteStdout("deleted volume %q", volume.ID)
+			outputwriter.WriteStdoutf("deleted volume %q", volume.ID)
 		} else {
 			d.logger.Printf("refusing to delete volume %s: nuke is not enabled", volume.ID)
 		}

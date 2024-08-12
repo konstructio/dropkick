@@ -37,7 +37,7 @@ func (d *DigitalOcean) NukeS3Storage() error {
 				if err != nil {
 					return fmt.Errorf("unable to delete object %q from Space bucket %q, region %q: %w", *obj.Key, *bucket.Name, d.spacesRegion, err)
 				}
-				outputwriter.WriteStdout("deleted object %q from Space bucket %q, region %q", *obj.Key, *bucket.Name, d.spacesRegion)
+				outputwriter.WriteStdoutf("deleted object %q from Space bucket %q, region %q", *obj.Key, *bucket.Name, d.spacesRegion)
 			} else {
 				d.logger.Printf("refusing to delete object %q from Space bucket %q, region %q: nuke is not enabled", *obj.Key, *bucket.Name, d.spacesRegion)
 			}
@@ -51,7 +51,7 @@ func (d *DigitalOcean) NukeS3Storage() error {
 			if err != nil {
 				return fmt.Errorf("unable to delete Space bucket %q, region %q: %w", *bucket.Name, d.spacesRegion, err)
 			}
-			outputwriter.WriteStdout("deleted Space bucket %q, region %q", *bucket.Name, d.spacesRegion)
+			outputwriter.WriteStdoutf("deleted Space bucket %q, region %q", *bucket.Name, d.spacesRegion)
 		} else {
 			d.logger.Printf("refusing to delete Space bucket %q, region %q: nuke is not enabled\n", *bucket.Name, d.spacesRegion)
 		}

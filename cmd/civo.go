@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,7 +22,7 @@ func getCivoCommand() *cobra.Command {
 		Use:   "civo",
 		Short: "clean civo resources",
 		Long:  `clean civo resources`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			quiet := cmd.Flags().Lookup("quiet").Value.String() == "true"
 			return runCivo(cmd.OutOrStderr(), region, os.Getenv("CIVO_TOKEN"), nuke, quiet)
 		},
@@ -39,7 +40,7 @@ func getCivoCommand() *cobra.Command {
 
 func runCivo(output io.Writer, region, token string, nuke, quiet bool) error {
 	if token == "" {
-		return fmt.Errorf("required environment variable $CIVO_TOKEN not found")
+		return errors.New("required environment variable $CIVO_TOKEN not found")
 	}
 
 	// Create a logger and make it quiet

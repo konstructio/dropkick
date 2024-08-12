@@ -2,6 +2,7 @@ package digitalocean
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,11 +26,11 @@ type DigitalOcean struct {
 	spacesRegion    string          // The region for Spaces.
 }
 
-// DigitalOceanOption is a function that configures a DigitalOcean.
-type DigitalOceanOption func(*DigitalOcean) error
+// Option is a function that configures a DigitalOcean.
+type Option func(*DigitalOcean) error
 
 // WithLogger sets the logger for a DigitalOcean.
-func WithLogger(logger *logger.Logger) DigitalOceanOption {
+func WithLogger(logger *logger.Logger) Option {
 	return func(c *DigitalOcean) error {
 		c.logger = logger
 		return nil
@@ -37,7 +38,7 @@ func WithLogger(logger *logger.Logger) DigitalOceanOption {
 }
 
 // WithToken sets the API token for a DigitalOcean.
-func WithToken(token string) DigitalOceanOption {
+func WithToken(token string) Option {
 	return func(c *DigitalOcean) error {
 		c.token = token
 		return nil
@@ -45,7 +46,7 @@ func WithToken(token string) DigitalOceanOption {
 }
 
 // WithNuke sets whether to nuke resources for a DigitalOcean.
-func WithNuke(nuke bool) DigitalOceanOption {
+func WithNuke(nuke bool) Option {
 	return func(c *DigitalOcean) error {
 		c.nuke = nuke
 		return nil
@@ -53,14 +54,14 @@ func WithNuke(nuke bool) DigitalOceanOption {
 }
 
 // WithContext sets the context for a DigitalOcean.
-func WithContext(ctx context.Context) DigitalOceanOption {
+func WithContext(ctx context.Context) Option {
 	return func(c *DigitalOcean) error {
 		c.context = ctx
 		return nil
 	}
 }
 
-func WithS3Storage(accessKey, secretKey, region string) DigitalOceanOption {
+func WithS3Storage(accessKey, secretKey, region string) Option {
 	return func(c *DigitalOcean) error {
 		c.spacesAccessKey = accessKey
 		c.spacesSecretKey = secretKey
@@ -72,7 +73,7 @@ func WithS3Storage(accessKey, secretKey, region string) DigitalOceanOption {
 // New creates a new DigitalOcean with the given options.
 // It returns an error if the token or region is not set, or if it fails to
 // create the underlying DigitalOcean API client.
-func New(opts ...DigitalOceanOption) (*DigitalOcean, error) {
+func New(opts ...Option) (*DigitalOcean, error) {
 	c := &DigitalOcean{}
 
 	for _, opt := range opts {
@@ -82,7 +83,7 @@ func New(opts ...DigitalOceanOption) (*DigitalOcean, error) {
 	}
 
 	if c.token == "" {
-		return nil, fmt.Errorf("required token not found")
+		return nil, errors.New("required token not found")
 	}
 
 	// The DigitalOcean API client does not authenticate until a request is made,
@@ -101,12 +102,12 @@ func New(opts ...DigitalOceanOption) (*DigitalOcean, error) {
 
 	// Set up S3 storage
 	if c.spacesAccessKey == "" || c.spacesSecretKey == "" || c.spacesRegion == "" {
-		return nil, fmt.Errorf("DigitalOcean spaces credentials are not set")
+		return nil, errors.New("DigitalOcean spaces credentials are not set")
 	}
 
 	endpoint, err := generateSpacesEndpoint(c.spacesRegion)
 	if err != nil {
-		return nil, err // nolint: wrapcheck // no need to wrap this error
+		return nil, err
 	}
 
 	sess, err := session.NewSession(&aws.Config{

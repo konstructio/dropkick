@@ -38,7 +38,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 					return fmt.Errorf("Civo returned an error code %s when deleting volume %q: %s", res.ErrorCode, volume.ID, res.ErrorDetails)
 				}
 
-				outputwriter.WriteStdout("deleted volume %q for cluster %q", volume.ID, cluster.ID)
+				outputwriter.WriteStdoutf("deleted volume %q for cluster %q", volume.ID, cluster.ID)
 			} else {
 				c.logger.Printf("refusing to delete volume %q for cluster %q: nuke is not enabled", volume.ID, cluster.ID)
 			}
@@ -55,7 +55,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 				return fmt.Errorf("Civo returned an error code %s when deleting cluster %q: %s", res.ErrorCode, cluster.ID, res.ErrorDetails)
 			}
 
-			outputwriter.WriteStdout("deleted cluster %q", cluster.ID)
+			outputwriter.WriteStdoutf("deleted cluster %q", cluster.ID)
 		} else {
 			c.logger.Printf("refusing to delete cluster %q: nuke is not enabled", cluster.ID)
 		}
@@ -76,7 +76,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 				return fmt.Errorf("Civo returned an error code %s when deleting network %q: %s", res.ErrorCode, network.ID, res.ErrorDetails)
 			}
 
-			outputwriter.WriteStdout("deleted network %q", network.ID)
+			outputwriter.WriteStdoutf("deleted network %q", network.ID)
 		} else {
 			c.logger.Printf("refusing to delete network %q: nuke is not enabled", network.ID)
 		}

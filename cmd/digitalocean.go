@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -26,7 +27,7 @@ func getDigitalOceanCommand() *cobra.Command {
 		Use:   "digitalocean",
 		Short: "clean digitalocean resources",
 		Long:  `clean digitalocean resources`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.token = env.GetFirstNotEmpty("DIGITALOCEAN_TOKEN")
 			opts.spacesAccessKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_ACCESS_KEY", "SPACES_KEY")
 			opts.spacesSecretKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_SECRET_KEY", "SPACES_SECRET")
@@ -43,18 +44,18 @@ func getDigitalOceanCommand() *cobra.Command {
 func runDigitalOcean(output io.Writer, opts doOptions, quiet bool) error {
 	// Check token
 	if opts.token == "" {
-		return fmt.Errorf("required environment variable $DIGITALOCEAN_TOKEN not set")
+		return errors.New("required environment variable $DIGITALOCEAN_TOKEN not set")
 	}
 
 	// Check spaces credentials
 	if opts.spacesAccessKey == "" {
-		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_ACCESS_KEY or $SPACES_KEY not set")
+		return errors.New("required environment variable $DIGITALOCEAN_SPACES_ACCESS_KEY or $SPACES_KEY not set")
 	}
 	if opts.spacesSecretKey == "" {
-		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_SECRET_KEY or $SPACES_SECRET not set")
+		return errors.New("required environment variable $DIGITALOCEAN_SPACES_SECRET_KEY or $SPACES_SECRET not set")
 	}
 	if opts.spacesRegion == "" {
-		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_REGION or $SPACES_REGION not set")
+		return errors.New("required environment variable $DIGITALOCEAN_SPACES_REGION or $SPACES_REGION not set")
 	}
 
 	// Create a logger and make it quiet

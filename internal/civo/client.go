@@ -2,6 +2,7 @@ package civo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/civo/civogo"
@@ -18,11 +19,11 @@ type Civo struct {
 	logger  *logger.Logger  // The logger instance.
 }
 
-// CivoOption is a function that configures a Civo.
-type CivoOption func(*Civo) error
+// Option is a function that configures a Civo.
+type Option func(*Civo) error
 
 // WithLogger sets the logger for a Civo.
-func WithLogger(logger *logger.Logger) CivoOption {
+func WithLogger(logger *logger.Logger) Option {
 	return func(c *Civo) error {
 		c.logger = logger
 		return nil
@@ -30,7 +31,7 @@ func WithLogger(logger *logger.Logger) CivoOption {
 }
 
 // WithToken sets the API token for a Civo.
-func WithToken(token string) CivoOption {
+func WithToken(token string) Option {
 	return func(c *Civo) error {
 		c.token = token
 		return nil
@@ -38,7 +39,7 @@ func WithToken(token string) CivoOption {
 }
 
 // WithRegion sets the region for a Civo.
-func WithRegion(region string) CivoOption {
+func WithRegion(region string) Option {
 	return func(c *Civo) error {
 		c.region = region
 		return nil
@@ -46,7 +47,7 @@ func WithRegion(region string) CivoOption {
 }
 
 // WithNuke sets whether to nuke resources for a Civo.
-func WithNuke(nuke bool) CivoOption {
+func WithNuke(nuke bool) Option {
 	return func(c *Civo) error {
 		c.nuke = nuke
 		return nil
@@ -54,7 +55,7 @@ func WithNuke(nuke bool) CivoOption {
 }
 
 // WithContext sets the context for a Civo.
-func WithContext(ctx context.Context) CivoOption {
+func WithContext(ctx context.Context) Option {
 	return func(c *Civo) error {
 		c.context = ctx
 		return nil
@@ -63,7 +64,7 @@ func WithContext(ctx context.Context) CivoOption {
 
 // New creates a new Civo with the given options.
 // It returns an error if the token or region is not set, or if it fails to create the underlying Civo API client.
-func New(opts ...CivoOption) (*Civo, error) {
+func New(opts ...Option) (*Civo, error) {
 	c := &Civo{}
 
 	for _, opt := range opts {
@@ -73,11 +74,11 @@ func New(opts ...CivoOption) (*Civo, error) {
 	}
 
 	if c.token == "" {
-		return nil, fmt.Errorf("required token not found")
+		return nil, errors.New("required token not found")
 	}
 
 	if c.region == "" {
-		return nil, fmt.Errorf("required region not set")
+		return nil, errors.New("required region not set")
 	}
 
 	civoClient, err := civogo.NewClient(c.token, c.region)

@@ -1,6 +1,5 @@
 /*
 Copyright © 2024 konstruct info@konstructio.io
-
 */
 package main
 
