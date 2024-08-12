@@ -2,58 +2,85 @@ package civo
 
 import (
 	"fmt"
+
+	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
-func (c *CivoConfiguration) NukeKubernetesClusters(CivoCmdOptions *CivoCmdOptions) error {
-	fmt.Printf("deleting all kubernetes clusters in %s with --nuke set to %t \n", CivoCmdOptions.Region, CivoCmdOptions.Nuke)
+// NukeKubernetesClusters deletes all Kubernetes clusters associated with the Civo client.
+// It returns an error if the deletion process encounters any issues.
+func (c *Civo) NukeKubernetesClusters() error {
+	c.logger.Printf("listing Kubernetes clusters")
 
-	clusters, err := c.Client.ListKubernetesClusters()
+	clusters, err := c.client.ListKubernetesClusters()
 	if err != nil {
-		fmt.Println("err getting clusters", err)
+		return fmt.Errorf("unable to list Kubernetes clusters: %w", err)
 	}
 
-	for _, cl := range clusters.Items {
-		fmt.Println("cluster name: ", cl.Name)
-		fmt.Println("cluster id: ", cl.ID)
-		clusterVolumes, err := c.Client.ListVolumesForCluster(cl.ID)
+	c.logger.Printf("found %d clusters", len(clusters.Items))
+
+	for _, cluster := range clusters.Items {
+		c.logger.Printf("found cluster: name: %q - ID: %q", cluster.Name, cluster.ID)
+
+		clusterVolumes, err := c.client.ListVolumesForCluster(cluster.ID)
 		if err != nil {
-			fmt.Println("err getting cluster volumes", err)
+			return fmt.Errorf("unable to list volumes for cluster %q: %w", cluster.ID, err)
 		}
-		for _, v := range clusterVolumes {
-			if CivoCmdOptions.Nuke {
-				res, err := c.Client.DeleteVolume(v.ID)
+
+		for _, volume := range clusterVolumes {
+			if c.nuke {
+				c.logger.Printf("deleting volume %q for cluster %q", volume.ID, cluster.ID)
+				res, err := c.client.DeleteVolume(volume.ID)
 				if err != nil {
-					fmt.Println("err deleting cluster volumes", err)
+					return fmt.Errorf("unable to delete cluster %q volume %q: %w", cluster.ID, volume.ID, err)
 				}
-				fmt.Println("cluster vol delete http code ", res.ErrorCode)
+
+				if res.ErrorCode != "200" {
+					return fmt.Errorf("Civo returned an error code %s when deleting volume %q: %s", res.ErrorCode, volume.ID, res.ErrorDetails)
+				}
+
+				outputwriter.WriteStdoutf("deleted volume %q for cluster %q", volume.ID, cluster.ID)
 			} else {
-				fmt.Printf("nuke set to %t, not removing volume %s\n", CivoCmdOptions.Nuke, v.ID)
+				c.logger.Printf("refusing to delete volume %q for cluster %q: nuke is not enabled", volume.ID, cluster.ID)
 			}
-		}
-		if CivoCmdOptions.Nuke {
-			res, err := c.Client.DeleteKubernetesCluster(cl.ID)
-			if err != nil {
-				fmt.Println("err deleting cluster", err)
-			}
-			fmt.Println("cluster delete http code ", res.ErrorCode)
-		} else {
-			fmt.Printf("nuke set to %t, not cluster %s\n", CivoCmdOptions.Nuke, cl.ID)
 		}
 
-		network, err := c.Client.FindNetwork(cl.Name)
+		if c.nuke {
+			c.logger.Printf("deleting cluster %q", cluster.ID)
+			res, err := c.client.DeleteKubernetesCluster(cluster.ID)
+			if err != nil {
+				return fmt.Errorf("unable to delete cluster %q: %w", cluster.ID, err)
+			}
+
+			if res.ErrorCode != "200" {
+				return fmt.Errorf("Civo returned an error code %s when deleting cluster %q: %s", res.ErrorCode, cluster.ID, res.ErrorDetails)
+			}
+
+			outputwriter.WriteStdoutf("deleted cluster %q", cluster.ID)
+		} else {
+			c.logger.Printf("refusing to delete cluster %q: nuke is not enabled", cluster.ID)
+		}
+
+		network, err := c.client.FindNetwork(cluster.Name)
 		if err != nil {
-			fmt.Println("err finding network", err)
+			return fmt.Errorf("unable to find network for cluster %q: %w", cluster.ID, err)
 		}
 
-		if CivoCmdOptions.Nuke {
-			res, err := c.Client.DeleteNetwork(network.ID)
+		if c.nuke {
+			c.logger.Printf("deleting network %q", network.ID)
+			res, err := c.client.DeleteNetwork(network.ID)
 			if err != nil {
-				fmt.Println("err deleting cluster network", err)
+				return fmt.Errorf("unable to delete cluster network %q: %w", cluster.ID, err)
 			}
-			fmt.Println("delete network http code ", res.ErrorCode)
+
+			if res.ErrorCode != "200" {
+				return fmt.Errorf("Civo returned an error code %s when deleting network %q: %s", res.ErrorCode, network.ID, res.ErrorDetails)
+			}
+
+			outputwriter.WriteStdoutf("deleted network %q", network.ID)
 		} else {
-			fmt.Printf("nuke set to %t, not removing network %s\n", CivoCmdOptions.Nuke, cl.ID)
+			c.logger.Printf("refusing to delete network %q: nuke is not enabled", network.ID)
 		}
 	}
+
 	return nil
 }
