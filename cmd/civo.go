@@ -22,7 +22,8 @@ func getCivoCommand() *cobra.Command {
 		Short: "clean civo resources",
 		Long:  `clean civo resources`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCivo(cmd.OutOrStdout(), region, os.Getenv("CIVO_TOKEN"), nuke)
+			quiet := cmd.Flags().Lookup("quiet").Value.String() == "true"
+			return runCivo(cmd.OutOrStderr(), region, os.Getenv("CIVO_TOKEN"), nuke, quiet)
 		},
 	}
 
@@ -36,16 +37,24 @@ func getCivoCommand() *cobra.Command {
 	return civoCmd
 }
 
-func runCivo(output io.Writer, region, token string, nuke bool) error {
+func runCivo(output io.Writer, region, token string, nuke, quiet bool) error {
 	if token == "" {
 		return fmt.Errorf("required environment variable $CIVO_TOKEN not found")
+	}
+
+	// Create a logger and make it quiet
+	var log *logger.Logger
+	if quiet {
+		log = logger.New(io.Discard)
+	} else {
+		log = logger.New(output)
 	}
 
 	client, err := civo.New(
 		civo.WithToken(token),
 		civo.WithRegion(region),
 		civo.WithNuke(nuke),
-		civo.WithLogger(logger.New(output)),
+		civo.WithLogger(log),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create new client: %w", err)

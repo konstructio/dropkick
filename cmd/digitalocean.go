@@ -31,7 +31,8 @@ func getDigitalOceanCommand() *cobra.Command {
 			opts.spacesAccessKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_ACCESS_KEY", "SPACES_KEY")
 			opts.spacesSecretKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_SECRET_KEY", "SPACES_SECRET")
 			opts.spacesRegion = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_REGION", "SPACES_REGION")
-			return runDigitalOcean(cmd.OutOrStdout(), opts)
+			quiet := cmd.Flags().Lookup("quiet").Value.String() == "true"
+			return runDigitalOcean(cmd.OutOrStderr(), opts, quiet)
 		},
 	}
 
@@ -39,7 +40,7 @@ func getDigitalOceanCommand() *cobra.Command {
 	return cmd
 }
 
-func runDigitalOcean(output io.Writer, opts doOptions) error {
+func runDigitalOcean(output io.Writer, opts doOptions, quiet bool) error {
 	// Check token
 	if opts.token == "" {
 		return fmt.Errorf("required environment variable $DIGITALOCEAN_TOKEN not set")
@@ -56,13 +57,21 @@ func runDigitalOcean(output io.Writer, opts doOptions) error {
 		return fmt.Errorf("required environment variable $DIGITALOCEAN_SPACES_REGION or $SPACES_REGION not set")
 	}
 
+	// Create a logger and make it quiet
+	var log *logger.Logger
+	if quiet {
+		log = logger.New(io.Discard)
+	} else {
+		log = logger.New(output)
+	}
+
 	// Create DigitalOcean client
 	client, err := digitalocean.New(
 		digitalocean.WithToken(opts.token),
 		digitalocean.WithS3Storage(opts.spacesAccessKey, opts.spacesSecretKey, opts.spacesRegion),
 		digitalocean.WithNuke(opts.nuke),
 		digitalocean.WithContext(context.Background()),
-		digitalocean.WithLogger(logger.New(output)),
+		digitalocean.WithLogger(log),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create new client: %w", err)
