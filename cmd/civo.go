@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,8 +22,9 @@ func getCivoCommand() *cobra.Command {
 		Use:   "civo",
 		Short: "clean civo resources",
 		Long:  `clean civo resources`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCivo(cmd.OutOrStdout(), region, nuke)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			quiet := cmd.Flags().Lookup("quiet").Value.String() == "true"
+			return runCivo(cmd.OutOrStderr(), region, os.Getenv("CIVO_TOKEN"), nuke, quiet)
 		},
 	}
 
@@ -36,17 +38,24 @@ func getCivoCommand() *cobra.Command {
 	return civoCmd
 }
 
-func runCivo(output io.Writer, region string, nuke bool) error {
-	token := os.Getenv("CIVO_TOKEN")
+func runCivo(output io.Writer, region, token string, nuke, quiet bool) error {
 	if token == "" {
-		return fmt.Errorf("required environment variable $CIVO_TOKEN not found")
+		return errors.New("required environment variable $CIVO_TOKEN not found")
+	}
+
+	// Create a logger and make it quiet
+	var log *logger.Logger
+	if quiet {
+		log = logger.New(io.Discard)
+	} else {
+		log = logger.New(output)
 	}
 
 	client, err := civo.New(
 		civo.WithToken(token),
 		civo.WithRegion(region),
 		civo.WithNuke(nuke),
-		civo.WithLogger(logger.New(output)),
+		civo.WithLogger(log),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create new client: %w", err)
