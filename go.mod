@@ -1,6 +1,6 @@
 module github.com/konstructio/dropkick
 
-go 1.22
+go 1.23
 
 require (
 	github.com/civo/civogo v0.3.65
