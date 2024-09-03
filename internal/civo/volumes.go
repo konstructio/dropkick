@@ -8,6 +8,8 @@ import (
 
 // NukeVolumes deletes all volumes associated with the Civo client.
 // It returns an error if the deletion process encounters any issues.
+//
+//nolint:dupl // similar functions due to upstream packaging
 func (c *Civo) NukeVolumes() error {
 	c.logger.Infof("listing volumes")
 

@@ -9,10 +9,9 @@ import (
 )
 
 var (
-	colorCyan    = color.New(color.FgCyan).SprintFunc()
-	colorYellow  = color.New(color.FgYellow).SprintFunc()
-	colorRed     = color.New(color.FgRed).SprintFunc()
-	colorGeneric = color.New(color.FgWhite).SprintFunc()
+	colorCyan   = color.New(color.FgCyan).SprintFunc()
+	colorYellow = color.New(color.FgYellow).SprintFunc()
+	colorRed    = color.New(color.FgRed).SprintFunc()
 )
 
 // Logger is a struct that wraps the standard library's log.Logger

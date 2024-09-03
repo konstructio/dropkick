@@ -8,6 +8,8 @@ import (
 
 // NukeNetworks deletes all networks associated with the Civo client.
 // It returns an error if the deletion process encounters any issues.
+//
+//nolint:dupl // similar functions due to upstream packaging
 func (c *Civo) NukeNetworks() error {
 	c.logger.Infof("listing networks")
 
