@@ -9,31 +9,37 @@ import (
 // NukeVolumes deletes all volumes associated with the Civo client.
 // It returns an error if the deletion process encounters any issues.
 func (c *Civo) NukeVolumes() error {
-	c.logger.Printf("listing volumes")
+	c.logger.Infof("listing volumes")
 
 	volumes, err := c.client.ListVolumes()
 	if err != nil {
 		return fmt.Errorf("unable to list volumes: %w", err)
 	}
 
-	c.logger.Printf("found %d volumes", len(volumes))
+	c.logger.Infof("found %d volumes", len(volumes))
 
 	for _, volume := range volumes {
-		c.logger.Printf("found volume %q", volume.ID)
+		c.logger.Infof("found volume %q - ID: %q", volume.Name, volume.ID)
+
+		if c.nameFilter != nil && !c.nameFilter.MatchString(volume.Name) {
+			c.logger.Warnf("skipping volume %q: name does not match filter", volume.Name)
+			continue
+		}
 
 		if c.nuke {
-			c.logger.Printf("deleting volume %q", volume.ID)
+			c.logger.Infof("deleting volume %q", volume.Name)
+
 			res, err := c.client.DeleteVolume(volume.ID)
 			if err != nil {
-				return fmt.Errorf("unable to delete volume %s: %w", volume.ID, err)
+				return fmt.Errorf("unable to delete volume %s: %w", volume.Name, err)
 			}
 
 			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %s when deleting volume %s: %s", res.ErrorCode, volume.ID, res.ErrorDetails)
+				return fmt.Errorf("Civo returned an error code %q when deleting volume %s: %s", res.ErrorCode, volume.Name, res.ErrorDetails)
 			}
-			outputwriter.WriteStdoutf("deleted volume %s", volume.ID)
+			outputwriter.WriteStdoutf("deleted volume %s", volume.Name)
 		} else {
-			c.logger.Printf("refusing to delete volume %s: nuke is not enabled", volume.ID)
+			c.logger.Warnf("refusing to delete volume %s: nuke is not enabled", volume.Name)
 		}
 	}
 	return nil

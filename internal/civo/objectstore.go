@@ -11,44 +11,49 @@ import (
 func (c *Civo) NukeObjectStores() error {
 	totalPages := 1
 	for page := 1; page <= totalPages; page++ {
-		c.logger.Printf("listing object stores for page %d", page)
+		c.logger.Infof("listing object stores for page %d", page)
 
 		items, err := c.client.ListObjectStores()
 		if err != nil {
 			return fmt.Errorf("unable to list object stores: %w", err)
 		}
 
-		c.logger.Printf("found %d object stores and %d pages", len(items.Items), items.Pages)
+		c.logger.Infof("found %d object stores and %d pages", len(items.Items), items.Pages)
 
 		totalPages = items.Pages
 
 		for _, objStore := range items.Items {
-			c.logger.Printf("found object store %q", objStore.ID)
+			c.logger.Infof("found object store %q", objStore.Name)
+
+			if c.nameFilter != nil && !c.nameFilter.MatchString(objStore.Name) {
+				c.logger.Warnf("skipping object store %q: name does not match filter", objStore.Name)
+				continue
+			}
 
 			if c.nuke {
-				c.logger.Printf("deleting object store %q", objStore.ID)
+				c.logger.Infof("deleting object store %q", objStore.Name)
 				status, err := c.client.DeleteObjectStore(objStore.ID)
 				if err != nil {
-					return fmt.Errorf("unable to delete object store %q: %w", objStore.ID, err)
+					return fmt.Errorf("unable to delete object store %q: %w", objStore.Name, err)
 				}
 
 				if status.ErrorCode != "200" {
-					return fmt.Errorf("Civo returned an error code %s when deleting object store %q: %s", status.ErrorCode, objStore.ID, status.ErrorDetails)
+					return fmt.Errorf("Civo returned an error code %q when deleting object store %q: %s", status.ErrorCode, objStore.Name, status.ErrorDetails)
 				}
-				outputwriter.WriteStdoutf("deleted object store %q", objStore.ID)
+				outputwriter.WriteStdoutf("deleted object store %q", objStore.Name)
 
-				c.logger.Printf("deleting object store credential %q", objStore.ID)
+				c.logger.Infof("deleting object store credential %q", objStore.Name)
 				status, err = c.client.DeleteObjectStoreCredential(objStore.ID)
 				if err != nil {
-					return fmt.Errorf("unable to delete object store credential %q: %w", objStore.ID, err)
+					return fmt.Errorf("unable to delete object store credential %q: %w", objStore.Name, err)
 				}
 
 				if status.ErrorCode != "200" {
-					return fmt.Errorf("Civo returned an error code %s when deleting object store credential %q: %s", status.ErrorCode, objStore.ID, status.ErrorDetails)
+					return fmt.Errorf("Civo returned an error code %q when deleting object store credential %q: %s", status.ErrorCode, objStore.Name, status.ErrorDetails)
 				}
-				outputwriter.WriteStdoutf("deleted object store credential %q", objStore.ID)
+				outputwriter.WriteStdoutf("deleted object store credential %q", objStore.Name)
 			} else {
-				fmt.Printf("refusing to delete object store %q: nuke is not enabled\n", objStore.ID)
+				c.logger.Warnf("refusing to delete object store %q: nuke is not enabled", objStore.Name)
 			}
 		}
 	}
@@ -61,26 +66,36 @@ func (c *Civo) NukeObjectStores() error {
 func (c *Civo) NukeObjectStoreCredentials() error {
 	totalPages := 1
 	for page := 1; page <= totalPages; page++ {
+		c.logger.Infof("listing object store credentials for page %d", page)
+
 		items, err := c.client.ListObjectStoreCredentials()
 		if err != nil {
 			return fmt.Errorf("unable to list object store credentials: %w", err)
 		}
 
 		totalPages = items.Pages
+		c.logger.Infof("found %d object store credentials on page %d (%d pages total)", len(items.Items), page, items.Pages)
 
 		for _, objStoreCred := range items.Items {
+			c.logger.Infof("found object store credential %q - ID: %q", objStoreCred.Name, objStoreCred.ID)
+
+			if c.nameFilter != nil && !c.nameFilter.MatchString(objStoreCred.Name) {
+				c.logger.Warnf("skipping object store credential %q: name does not match filter", objStoreCred.Name)
+				continue
+			}
+
 			if c.nuke {
 				status, err := c.client.DeleteObjectStoreCredential(objStoreCred.ID)
 				if err != nil {
-					return fmt.Errorf("unable to delete object store credential %q: %w", objStoreCred.ID, err)
+					return fmt.Errorf("unable to delete object store credential %q: %w", objStoreCred.Name, err)
 				}
 
 				if status.ErrorCode != "200" {
-					return fmt.Errorf("Civo returned an error code %s when deleting object store credential %q: %s", status.ErrorCode, objStoreCred.ID, status.ErrorDetails)
+					return fmt.Errorf("Civo returned an error code %q when deleting object store credential %q: %s", status.ErrorCode, objStoreCred.Name, status.ErrorDetails)
 				}
-				outputwriter.WriteStdoutf("deleted object store credential %q", objStoreCred.ID)
+				outputwriter.WriteStdoutf("deleted object store credential %q", objStoreCred.Name)
 			} else {
-				fmt.Printf("refusing to delete object store credential %q: nuke is not enabled\n", objStoreCred.ID)
+				c.logger.Warnf("refusing to delete object store credential %q: nuke is not enabled", objStoreCred.Name)
 			}
 		}
 	}

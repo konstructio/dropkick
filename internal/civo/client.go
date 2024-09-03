@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/civo/civogo"
 	"github.com/konstructio/dropkick/internal/logger"
@@ -11,12 +12,13 @@ import (
 
 // Civo is a client for the Civo API.
 type Civo struct {
-	client  *civogo.Client  // The underlying Civo API client.
-	context context.Context // The context for API requests.
-	nuke    bool            // Whether to nuke resources.
-	region  string          // The region for API requests.
-	token   string          // The API token.
-	logger  *logger.Logger  // The logger instance.
+	client     *civogo.Client  // The underlying Civo API client.
+	context    context.Context // The context for API requests.
+	nuke       bool            // Whether to nuke resources.
+	region     string          // The region for API requests.
+	nameFilter *regexp.Regexp  // If set, only resources with a name matching the regexp will be deleted.
+	token      string          // The API token.
+	logger     *logger.Logger  // The logger instance.
 }
 
 // Option is a function that configures a Civo.
@@ -58,6 +60,19 @@ func WithNuke(nuke bool) Option {
 func WithContext(ctx context.Context) Option {
 	return func(c *Civo) error {
 		c.context = ctx
+		return nil
+	}
+}
+
+// WithNameFilter sets the name filter for a Civo.
+func WithNameFilter(nameFilter string) Option {
+	return func(c *Civo) error {
+		reFilter, err := regexp.Compile(nameFilter)
+		if err != nil {
+			return fmt.Errorf("unable to compile name filter regexp %q: %w", nameFilter, err)
+		}
+
+		c.nameFilter = reFilter
 		return nil
 	}
 }

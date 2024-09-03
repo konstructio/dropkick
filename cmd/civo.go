@@ -14,8 +14,9 @@ import (
 
 func getCivoCommand() *cobra.Command {
 	var (
-		nuke   bool
-		region string
+		nuke       bool
+		region     string
+		nameFilter string
 	)
 
 	civoCmd := &cobra.Command{
@@ -24,12 +25,13 @@ func getCivoCommand() *cobra.Command {
 		Long:  `clean civo resources`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			quiet := cmd.Flags().Lookup("quiet").Value.String() == "true"
-			return runCivo(cmd.OutOrStderr(), region, os.Getenv("CIVO_TOKEN"), nuke, quiet)
+			return runCivo(cmd.OutOrStderr(), region, os.Getenv("CIVO_TOKEN"), nameFilter, nuke, quiet)
 		},
 	}
 
 	civoCmd.Flags().BoolVar(&nuke, "nuke", false, "required to confirm deletion of resources")
 	civoCmd.Flags().StringVar(&region, "region", "", "the civo region to clean")
+	civoCmd.Flags().StringVar(&nameFilter, "filter", "", "(regexp) if set, only resources with a name matching the regexp will be deleted")
 	err := civoCmd.MarkFlagRequired("region")
 	if err != nil {
 		log.Fatal(err)
@@ -38,9 +40,9 @@ func getCivoCommand() *cobra.Command {
 	return civoCmd
 }
 
-func runCivo(output io.Writer, region, token string, nuke, quiet bool) error {
+func runCivo(output io.Writer, region, token, nameFilter string, nuke, quiet bool) error {
 	if token == "" {
-		return errors.New("required environment variable $CIVO_TOKEN not found")
+		return errors.New("required environment variable $CIVO_TOKEN not found: get one at https://dashboard.civo.com/security")
 	}
 
 	// Create a logger and make it quiet
@@ -54,6 +56,7 @@ func runCivo(output io.Writer, region, token string, nuke, quiet bool) error {
 	client, err := civo.New(
 		civo.WithToken(token),
 		civo.WithRegion(region),
+		civo.WithNameFilter(nameFilter),
 		civo.WithNuke(nuke),
 		civo.WithLogger(log),
 	)
