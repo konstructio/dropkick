@@ -11,12 +11,13 @@ import (
 
 // Civo is a client for the Civo API.
 type Civo struct {
-	client  *civogo.Client  // The underlying Civo API client.
-	context context.Context // The context for API requests.
-	nuke    bool            // Whether to nuke resources.
-	region  string          // The region for API requests.
-	token   string          // The API token.
-	logger  *logger.Logger  // The logger instance.
+	client     *civogo.Client  // The underlying Civo API client.
+	context    context.Context // The context for API requests.
+	nuke       bool            // Whether to nuke resources.
+	region     string          // The region for API requests.
+	nameFilter string          // If set, only resources with a name containing this string will be deleted.
+	token      string          // The API token.
+	logger     *logger.Logger  // The logger instance.
 }
 
 // Option is a function that configures a Civo.
@@ -58,6 +59,14 @@ func WithNuke(nuke bool) Option {
 func WithContext(ctx context.Context) Option {
 	return func(c *Civo) error {
 		c.context = ctx
+		return nil
+	}
+}
+
+// WithNameFilter sets the name filter for a Civo.
+func WithNameFilter(nameFilter string) Option {
+	return func(c *Civo) error {
+		c.nameFilter = nameFilter
 		return nil
 	}
 }
