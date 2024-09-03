@@ -37,10 +37,12 @@ func (c *Civo) NukeKubernetesClusters() error {
 		for _, volume := range clusterVolumes {
 			c.logger.Infof("found volume: name: %q - ID: %q", volume.Name, volume.ID)
 
-			if c.nameFilter != "" && !compare.ContainsIgnoreCase(volume.Name, c.nameFilter) {
-				c.logger.Warnf("skipping volume %q: name does not match filter", volume.Name)
-				continue
-			}
+			// We don't filter by volumes since Volume names are specific to the PVC
+			// that created them (so on a cluster called "foo", the PVC would be called
+			// "pvc-82d40d15-5ce2-418d-bb81-09a0349ec975").
+			// If we land in this section, it means a Kubernetes cluster was already
+			// found by matching the name filter, so we can safely delete all volumes
+			// associated with it.
 
 			if c.nuke {
 				c.logger.Infof("deleting volume %q for cluster %q", volume.Name, cluster.Name)
