@@ -31,7 +31,7 @@ func getCivoCommand() *cobra.Command {
 
 	civoCmd.Flags().BoolVar(&nuke, "nuke", false, "required to confirm deletion of resources")
 	civoCmd.Flags().StringVar(&region, "region", "", "the civo region to clean")
-	civoCmd.Flags().StringVar(&nameFilter, "filter", "", "(regexp) if set, only resources with a name matching the regexp will be deleted")
+	civoCmd.Flags().StringVar(&nameFilter, "name-contains", "", "if set, only resources with a name containing this string will be selected")
 	err := civoCmd.MarkFlagRequired("region")
 	if err != nil {
 		log.Fatal(err)

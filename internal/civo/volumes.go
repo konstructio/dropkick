@@ -4,6 +4,7 @@ package civo
 import (
 	"fmt"
 
+	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
@@ -22,7 +23,7 @@ func (c *Civo) NukeVolumes() error {
 	for _, volume := range volumes {
 		c.logger.Infof("found volume %q - ID: %q", volume.Name, volume.ID)
 
-		if c.nameFilter != nil && !c.nameFilter.MatchString(volume.Name) {
+		if c.nameFilter != "" && !compare.ContainsIgnoreCase(volume.Name, c.nameFilter) {
 			c.logger.Warnf("skipping volume %q: name does not match filter", volume.Name)
 			continue
 		}

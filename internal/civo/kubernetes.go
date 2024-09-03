@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
@@ -23,7 +24,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 	for _, cluster := range clusters.Items {
 		c.logger.Infof("found cluster: name: %q - ID: %q", cluster.Name, cluster.ID)
 
-		if c.nameFilter != nil && !c.nameFilter.MatchString(cluster.Name) {
+		if c.nameFilter != "" && !compare.ContainsIgnoreCase(cluster.Name, c.nameFilter) {
 			c.logger.Warnf("skipping cluster %q: name does not match filter", cluster.Name)
 			continue
 		}
@@ -36,7 +37,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 		for _, volume := range clusterVolumes {
 			c.logger.Infof("found volume: name: %q - ID: %q", volume.Name, volume.ID)
 
-			if c.nameFilter != nil && !c.nameFilter.MatchString(volume.Name) {
+			if c.nameFilter != "" && !compare.ContainsIgnoreCase(volume.Name, c.nameFilter) {
 				c.logger.Warnf("skipping volume %q: name does not match filter", volume.Name)
 				continue
 			}
@@ -84,7 +85,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 			return fmt.Errorf("unable to find network for cluster %q: %w", cluster.Name, err)
 		}
 
-		if c.nameFilter != nil && !c.nameFilter.MatchString(network.Name) {
+		if c.nameFilter != "" && !compare.ContainsIgnoreCase(network.Name, c.nameFilter) {
 			c.logger.Warnf("skipping network %q: name does not match filter", network.Name)
 			continue
 		}

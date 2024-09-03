@@ -4,6 +4,7 @@ package civo
 import (
 	"fmt"
 
+	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
@@ -22,7 +23,7 @@ func (c *Civo) NukeNetworks() error {
 	for _, network := range networks {
 		c.logger.Infof("found network: name: %q - ID: %q", network.Name, network.ID)
 
-		if c.nameFilter != nil && !c.nameFilter.MatchString(network.Name) {
+		if c.nameFilter != "" && !compare.ContainsIgnoreCase(network.Name, c.nameFilter) {
 			c.logger.Warnf("skipping network %q: name does not match filter", network.Name)
 			continue
 		}

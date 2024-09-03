@@ -3,6 +3,7 @@ package civo
 import (
 	"fmt"
 
+	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
@@ -25,7 +26,7 @@ func (c *Civo) NukeObjectStores() error {
 		for _, objStore := range items.Items {
 			c.logger.Infof("found object store %q", objStore.Name)
 
-			if c.nameFilter != nil && !c.nameFilter.MatchString(objStore.Name) {
+			if c.nameFilter != "" && !compare.ContainsIgnoreCase(objStore.Name, c.nameFilter) {
 				c.logger.Warnf("skipping object store %q: name does not match filter", objStore.Name)
 				continue
 			}
@@ -79,7 +80,7 @@ func (c *Civo) NukeObjectStoreCredentials() error {
 		for _, objStoreCred := range items.Items {
 			c.logger.Infof("found object store credential %q - ID: %q", objStoreCred.Name, objStoreCred.ID)
 
-			if c.nameFilter != nil && !c.nameFilter.MatchString(objStoreCred.Name) {
+			if c.nameFilter != "" && !compare.ContainsIgnoreCase(objStoreCred.Name, c.nameFilter) {
 				c.logger.Warnf("skipping object store credential %q: name does not match filter", objStoreCred.Name)
 				continue
 			}
