@@ -72,6 +72,8 @@ func WithNameFilter(nameFilter string) Option {
 }
 
 // client is an interface for the Civo API client.
+//
+//nolint:interfacebloat // the Civo API client has many methods
 type client interface {
 	ListInstances(page int, perPage int) (*civogo.PaginatedInstanceList, error)
 	ListSSHKeys() ([]civogo.SSHKey, error)
