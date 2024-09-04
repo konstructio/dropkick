@@ -90,11 +90,15 @@ type client interface {
 	DeleteObjectStore(id string) (*civogo.SimpleResponse, error)
 }
 
+var _ client = &civogo.Client{}
+
 type customLogger interface {
 	Errorf(format string, v ...interface{})
 	Infof(format string, v ...interface{})
 	Warnf(format string, v ...interface{})
 }
+
+var _ customLogger = &logger.Logger{}
 
 // New creates a new Civo with the given options.
 // It returns an error if the token or region is not set, or if it fails to create the underlying Civo API client.
