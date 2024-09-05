@@ -11,13 +11,13 @@ import (
 
 // Civo is a client for the Civo API.
 type Civo struct {
-	client     *civogo.Client  // The underlying Civo API client.
+	client     client          // The underlying Civo API client.
 	context    context.Context // The context for API requests.
 	nuke       bool            // Whether to nuke resources.
 	region     string          // The region for API requests.
 	nameFilter string          // If set, only resources with a name containing this string will be deleted.
 	token      string          // The API token.
-	logger     *logger.Logger  // The logger instance.
+	logger     customLogger    // The logger instance.
 }
 
 // Option is a function that configures a Civo.
@@ -70,6 +70,37 @@ func WithNameFilter(nameFilter string) Option {
 		return nil
 	}
 }
+
+// client is an interface for the Civo API client.
+//
+//nolint:interfacebloat // the Civo API client has many methods
+type client interface {
+	ListInstances(page int, perPage int) (*civogo.PaginatedInstanceList, error)
+	ListSSHKeys() ([]civogo.SSHKey, error)
+	DeleteSSHKey(id string) (*civogo.SimpleResponse, error)
+	ListVolumes() ([]civogo.Volume, error)
+	DeleteVolume(id string) (*civogo.SimpleResponse, error)
+	ListKubernetesClusters() (*civogo.PaginatedKubernetesClusters, error)
+	DeleteKubernetesCluster(id string) (*civogo.SimpleResponse, error)
+	ListVolumesForCluster(clusterID string) ([]civogo.Volume, error)
+	ListNetworks() ([]civogo.Network, error)
+	FindNetwork(search string) (*civogo.Network, error)
+	DeleteNetwork(id string) (*civogo.SimpleResponse, error)
+	ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error)
+	DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error)
+	ListObjectStores() (*civogo.PaginatedObjectstores, error)
+	DeleteObjectStore(id string) (*civogo.SimpleResponse, error)
+}
+
+var _ client = &civogo.Client{}
+
+type customLogger interface {
+	Errorf(format string, v ...interface{})
+	Infof(format string, v ...interface{})
+	Warnf(format string, v ...interface{})
+}
+
+var _ customLogger = &logger.Logger{}
 
 // New creates a new Civo with the given options.
 // It returns an error if the token or region is not set, or if it fails to create the underlying Civo API client.
