@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/civo/civogo"
-	"golang.org/x/sync/errgroup"
 )
 
 // NukeOrphanedResources deletes all subresources not in use by a compute
@@ -31,10 +30,22 @@ func (c *Civo) NukeOrphanedResources() error {
 		return fmt.Errorf("unable to fetch orphaned volumes: %w", err)
 	}
 
+	c.logger.Infof("found %d orphaned volumes", len(orphanedVolumes))
+
+	if err := c.deleteVolumes(orphanedVolumes); err != nil {
+		return fmt.Errorf("unable to delete orphaned volumes: %w", err)
+	}
+
 	// fetch orphaned SSH keys
 	orphanedSSHKeys, err := c.getOrphanedSSHKeys(nodes)
 	if err != nil {
 		return fmt.Errorf("unable to fetch orphaned SSH keys: %w", err)
+	}
+
+	c.logger.Infof("found %d orphaned SSH keys", len(orphanedSSHKeys))
+
+	if err := c.deleteSSHKeys(orphanedSSHKeys); err != nil {
+		return fmt.Errorf("unable to delete orphaned SSH keys: %w", err)
 	}
 
 	// fetch orphaned networks
@@ -43,26 +54,22 @@ func (c *Civo) NukeOrphanedResources() error {
 		return fmt.Errorf("unable to fetch orphaned networks: %w", err)
 	}
 
-	// create parallel executions for deleting orphaned resources
-	eg := errgroup.Group{}
+	c.logger.Infof("found %d orphaned networks", len(orphanedNetworks))
 
-	// delete orphaned volumes
-	eg.Go(func() error {
-		return c.deleteVolumes(orphanedVolumes)
-	})
+	if err := c.deleteNetworks(orphanedNetworks); err != nil {
+		return fmt.Errorf("unable to delete orphaned networks: %w", err)
+	}
 
-	// delete orphaned SSH keys
-	eg.Go(func() error {
-		return c.deleteSSHKeys(orphanedSSHKeys)
-	})
+	// fetch orphaned firewalls
+	orphanedFirewalls, err := c.getOrphanedFirewalls()
+	if err != nil {
+		return fmt.Errorf("unable to fetch orphaned firewalls: %w", err)
+	}
 
-	// delete orphaned networks
-	eg.Go(func() error {
-		return c.deleteNetworks(orphanedNetworks)
-	})
+	c.logger.Infof("found %d orphaned firewalls", len(orphanedFirewalls))
 
-	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("unable to delete orphaned resources: %w", err)
+	if err := c.deleteFirewalls(orphanedFirewalls); err != nil {
+		return fmt.Errorf("unable to delete orphaned firewalls: %w", err)
 	}
 
 	return nil
@@ -138,6 +145,31 @@ func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 			return fmt.Errorf("Civo returned an error code %q when deleting network %s: %s", res.ErrorCode, network.Name, res.ErrorDetails)
 		}
 		c.logger.Infof("deleted network %s", network.Name)
+	}
+
+	return nil
+}
+
+// deleteFirewalls deletes all firewalls in the provided list. It returns an error
+// if the deletion process encounters any issues.
+func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
+	for _, firewall := range firewalls {
+		if !c.nuke {
+			c.logger.Warnf("refusing to delete firewall %s: nuke is not enabled", firewall.Name)
+			continue
+		}
+
+		c.logger.Infof("deleting firewall %q", firewall.Name)
+
+		res, err := c.client.DeleteFirewall(firewall.ID)
+		if err != nil {
+			return fmt.Errorf("unable to delete firewall %s: %w", firewall.Name, err)
+		}
+
+		if res.ErrorCode != "200" {
+			return fmt.Errorf("Civo returned an error code %q when deleting firewall %s: %s", res.ErrorCode, firewall.Name, res.ErrorDetails)
+		}
+		c.logger.Infof("deleted firewall %s", firewall.Name)
 	}
 
 	return nil
@@ -266,4 +298,35 @@ func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance) ([]civogo.Network, e
 	}
 
 	return orphanedNetworks, nil
+}
+
+// getOrphanedFirewalls fetches all firewalls then checks if they are associated
+// with any node instance, cluster, or load balancer. It returns an error if the
+// fetching process encounters any issues.
+func (c *Civo) getOrphanedFirewalls() ([]*civogo.Firewall, error) {
+	c.logger.Infof("listing firewalls")
+
+	firewalls, err := c.client.ListFirewalls()
+	if err != nil {
+		return nil, fmt.Errorf("unable to list firewalls: %w", err)
+	}
+
+	c.logger.Infof("found %d firewalls", len(firewalls))
+
+	// iterate over all firewalls and check if they are associated with any nodes
+	orphanedFirewalls := make([]*civogo.Firewall, 0, len(firewalls))
+	for _, firewall := range firewalls {
+		if firewall.ClusterCount > 0 || firewall.InstanceCount > 0 || firewall.LoadBalancerCount > 0 {
+			c.logger.Warnf(
+				"skipping firewall %q: it is associated with %d clusters, %d instances, and %d load balancers",
+				firewall.Name, firewall.ClusterCount, firewall.InstanceCount, firewall.LoadBalancerCount,
+			)
+			continue
+		}
+
+		c.logger.Infof("found orphaned firewall %q - ID: %q", firewall.Name, firewall.ID)
+		orphanedFirewalls = append(orphanedFirewalls, &firewall)
+	}
+
+	return orphanedFirewalls, nil
 }

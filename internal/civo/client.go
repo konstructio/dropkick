@@ -9,6 +9,8 @@ import (
 	"github.com/konstructio/dropkick/internal/logger"
 )
 
+const civoAPIURL = "https://api.civo.com"
+
 // Civo is a client for the Civo API.
 type Civo struct {
 	client     client          // The underlying Civo API client.
@@ -18,6 +20,7 @@ type Civo struct {
 	nameFilter string          // If set, only resources with a name containing this string will be deleted.
 	token      string          // The API token.
 	logger     customLogger    // The logger instance.
+	apiURL     string          // The URL for the Civo API.
 }
 
 // Option is a function that configures a Civo.
@@ -71,6 +74,14 @@ func WithNameFilter(nameFilter string) Option {
 	}
 }
 
+// WithAPIURL sets the API URL for a Civo.
+func WithAPIURL(apiURL string) Option {
+	return func(c *Civo) error {
+		c.apiURL = apiURL
+		return nil
+	}
+}
+
 // client is an interface for the Civo API client.
 //
 //nolint:interfacebloat // the Civo API client has many methods
@@ -86,6 +97,8 @@ type client interface {
 	ListNetworks() ([]civogo.Network, error)
 	FindNetwork(search string) (*civogo.Network, error)
 	DeleteNetwork(id string) (*civogo.SimpleResponse, error)
+	ListFirewalls() ([]civogo.Firewall, error)
+	DeleteFirewall(id string) (*civogo.SimpleResponse, error)
 	ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error)
 	DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error)
 	ListObjectStores() (*civogo.PaginatedObjectstores, error)
@@ -121,7 +134,11 @@ func New(opts ...Option) (*Civo, error) {
 		return nil, errors.New("required region not set")
 	}
 
-	civoClient, err := civogo.NewClient(c.token, c.region)
+	if c.apiURL == "" {
+		c.apiURL = civoAPIURL
+	}
+
+	civoClient, err := civogo.NewClientWithURL(c.token, c.apiURL, c.region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new client: %w", err)
 	}
