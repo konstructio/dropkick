@@ -1,3 +1,4 @@
+//nolint:dupl // similar functions due to upstream packaging
 package civo
 
 import (
