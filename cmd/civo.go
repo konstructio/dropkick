@@ -104,5 +104,9 @@ func runCivo(output io.Writer, opts civoOptions, token string) error {
 		return fmt.Errorf("unable to cleanup SSH keys: %w", err)
 	}
 
+	if err := client.NukeFirewalls(); err != nil {
+		return fmt.Errorf("unable to cleanup firewalls: %w", err)
+	}
+
 	return nil
 }
