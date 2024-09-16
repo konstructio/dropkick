@@ -30,13 +30,10 @@ func (c *Civo) NukeFirewalls() error {
 
 		if c.nuke {
 			c.logger.Infof("deleting firewall %q", firewall.Name)
-			res, err := c.client.DeleteFirewall(firewall.ID)
+
+			_, err := c.client.DeleteFirewall(firewall.ID)
 			if err != nil {
 				return fmt.Errorf("unable to delete firewall %q: %w", firewall.Name, err)
-			}
-
-			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %q when deleting firewall %q: %s", res.ErrorCode, firewall.Name, res.ErrorDetails)
 			}
 
 			outputwriter.WriteStdoutf("deleted firewall %q", firewall.Name)

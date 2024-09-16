@@ -80,14 +80,13 @@ func (c *Civo) NukeObjectStoreCredentials() error {
 			}
 
 			if c.nuke {
-				status, err := c.client.DeleteObjectStoreCredential(objStoreCred.ID)
+				c.logger.Infof("deleting object store credential %q", objStoreCred.Name)
+
+				_, err := c.client.DeleteObjectStoreCredential(objStoreCred.ID)
 				if err != nil {
 					return fmt.Errorf("unable to delete object store credential %q: %w", objStoreCred.Name, err)
 				}
 
-				if status.ErrorCode != "200" {
-					return fmt.Errorf("Civo returned an error code %q when deleting object store credential %q: %s", status.ErrorCode, objStoreCred.Name, status.ErrorDetails)
-				}
 				outputwriter.WriteStdoutf("deleted object store credential %q", objStoreCred.Name)
 			} else {
 				c.logger.Warnf("refusing to delete object store credential %q: nuke is not enabled", objStoreCred.Name)

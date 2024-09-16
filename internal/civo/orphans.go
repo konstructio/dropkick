@@ -149,14 +149,11 @@ func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
 
 		c.logger.Infof("deleting firewall %q", firewall.Name)
 
-		res, err := c.client.DeleteFirewall(firewall.ID)
+		_, err := c.client.DeleteFirewall(firewall.ID)
 		if err != nil {
 			return fmt.Errorf("unable to delete firewall %s: %w", firewall.Name, err)
 		}
 
-		if res.ErrorCode != "200" {
-			return fmt.Errorf("Civo returned an error code %q when deleting firewall %s: %s", res.ErrorCode, firewall.Name, res.ErrorDetails)
-		}
 		c.logger.Infof("deleted firewall %s", firewall.Name)
 	}
 
