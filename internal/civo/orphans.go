@@ -86,14 +86,10 @@ func (c *Civo) deleteVolumes(volumes []civogo.Volume) error {
 
 		c.logger.Infof("deleting volume %q", volume.Name)
 
-		res, err := c.client.DeleteVolume(volume.ID)
-		if err != nil {
+		if _, err := c.client.DeleteVolume(volume.ID); err != nil {
 			return fmt.Errorf("unable to delete volume %s: %w", volume.Name, err)
 		}
 
-		if res.ErrorCode != "200" {
-			return fmt.Errorf("Civo returned an error code %q when deleting volume %s: %s", res.ErrorCode, volume.Name, res.ErrorDetails)
-		}
 		c.logger.Infof("deleted volume %s", volume.Name)
 	}
 
@@ -111,14 +107,10 @@ func (c *Civo) deleteSSHKeys(keys []civogo.SSHKey) error {
 
 		c.logger.Infof("deleting SSH key %q", key.Name)
 
-		res, err := c.client.DeleteSSHKey(key.ID)
-		if err != nil {
+		if _, err := c.client.DeleteSSHKey(key.ID); err != nil {
 			return fmt.Errorf("unable to delete SSH key %s: %w", key.Name, err)
 		}
 
-		if res.ErrorCode != "200" {
-			return fmt.Errorf("Civo returned an error code %q when deleting SSH key %s: %s", res.ErrorCode, key.Name, res.ErrorDetails)
-		}
 		c.logger.Infof("deleted SSH key %s", key.Name)
 	}
 
@@ -136,14 +128,10 @@ func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 
 		c.logger.Infof("deleting network %q", network.Name)
 
-		res, err := c.client.DeleteNetwork(network.ID)
-		if err != nil {
+		if _, err := c.client.DeleteNetwork(network.ID); err != nil {
 			return fmt.Errorf("unable to delete network %s: %w", network.Name, err)
 		}
 
-		if res.ErrorCode != "200" {
-			return fmt.Errorf("Civo returned an error code %q when deleting network %s: %s", res.ErrorCode, network.Name, res.ErrorDetails)
-		}
 		c.logger.Infof("deleted network %s", network.Name)
 	}
 

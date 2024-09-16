@@ -37,14 +37,10 @@ func (c *Civo) NukeVolumes() error {
 
 			c.logger.Infof("deleting volume %q", volume.Name)
 
-			res, err := c.client.DeleteVolume(volume.ID)
-			if err != nil {
+			if _, err := c.client.DeleteVolume(volume.ID); err != nil {
 				return fmt.Errorf("unable to delete volume %s: %w", volume.Name, err)
 			}
 
-			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %q when deleting volume %s: %s", res.ErrorCode, volume.Name, res.ErrorDetails)
-			}
 			outputwriter.WriteStdoutf("deleted volume %s", volume.Name)
 		} else {
 			c.logger.Warnf("refusing to delete volume %s: nuke is not enabled", volume.Name)

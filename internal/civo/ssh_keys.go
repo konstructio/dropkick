@@ -31,14 +31,10 @@ func (c *Civo) NukeSSHKeys() error {
 		if c.nuke {
 			c.logger.Infof("deleting SSH key %q", key.Name)
 
-			res, err := c.client.DeleteSSHKey(key.ID)
-			if err != nil {
+			if _, err := c.client.DeleteSSHKey(key.ID); err != nil {
 				return fmt.Errorf("unable to delete SSH key %s: %w", key.Name, err)
 			}
 
-			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %q when deleting SSH key %s: %s", res.ErrorCode, key.Name, res.ErrorDetails)
-			}
 			outputwriter.WriteStdoutf("deleted SSH key %s", key.Name)
 		} else {
 			c.logger.Warnf("refusing to delete SSH key %s: nuke is not enabled", key.Name)

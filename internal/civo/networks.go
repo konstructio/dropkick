@@ -30,13 +30,9 @@ func (c *Civo) NukeNetworks() error {
 
 		if c.nuke {
 			c.logger.Infof("deleting network %q", network.Name)
-			res, err := c.client.DeleteNetwork(network.ID)
-			if err != nil {
-				return fmt.Errorf("unable to delete network %q: %w", network.Name, err)
-			}
 
-			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %q when deleting network %q: %s", res.ErrorCode, network.Name, res.ErrorDetails)
+			if _, err := c.client.DeleteNetwork(network.ID); err != nil {
+				return fmt.Errorf("unable to delete network %q: %w", network.Name, err)
 			}
 
 			outputwriter.WriteStdoutf("deleted network %q", network.Name)

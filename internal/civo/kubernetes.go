@@ -46,13 +46,9 @@ func (c *Civo) NukeKubernetesClusters() error {
 
 			if c.nuke {
 				c.logger.Infof("deleting volume %q for cluster %q", volume.Name, cluster.Name)
-				res, err := c.client.DeleteVolume(volume.ID)
-				if err != nil {
-					return fmt.Errorf("unable to delete cluster %q volume %q: %w", cluster.Name, volume.Name, err)
-				}
 
-				if res.ErrorCode != "200" {
-					return fmt.Errorf("Civo returned an error code %q when deleting volume %q: %s", res.ErrorCode, volume.Name, res.ErrorDetails)
+				if _, err := c.client.DeleteVolume(volume.ID); err != nil {
+					return fmt.Errorf("unable to delete cluster %q volume %q: %w", cluster.Name, volume.Name, err)
 				}
 
 				outputwriter.WriteStdoutf("deleted volume %q for cluster %q", volume.Name, cluster.Name)
@@ -63,13 +59,9 @@ func (c *Civo) NukeKubernetesClusters() error {
 
 		if c.nuke {
 			c.logger.Infof("deleting cluster %q", cluster.Name)
-			res, err := c.client.DeleteKubernetesCluster(cluster.ID)
-			if err != nil {
-				return fmt.Errorf("unable to delete cluster %q: %w", cluster.Name, err)
-			}
 
-			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %q when deleting cluster %q: %s", res.ErrorCode, cluster.Name, res.ErrorDetails)
+			if _, err := c.client.DeleteKubernetesCluster(cluster.ID); err != nil {
+				return fmt.Errorf("unable to delete cluster %q: %w", cluster.Name, err)
 			}
 
 			outputwriter.WriteStdoutf("deleted cluster %q", cluster.Name)
@@ -94,13 +86,9 @@ func (c *Civo) NukeKubernetesClusters() error {
 
 		if c.nuke {
 			c.logger.Infof("deleting network %q", network.Name)
-			res, err := c.client.DeleteNetwork(network.ID)
-			if err != nil {
-				return fmt.Errorf("unable to delete cluster network %q: %w", cluster.Name, err)
-			}
 
-			if res.ErrorCode != "200" {
-				return fmt.Errorf("Civo returned an error code %q when deleting network %q: %s", res.ErrorCode, network.Name, res.ErrorDetails)
+			if _, err := c.client.DeleteNetwork(network.ID); err != nil {
+				return fmt.Errorf("unable to delete cluster network %q: %w", cluster.Name, err)
 			}
 
 			outputwriter.WriteStdoutf("deleted network %q", network.Name)
