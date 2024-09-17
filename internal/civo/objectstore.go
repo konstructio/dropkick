@@ -35,7 +35,7 @@ func (c *Civo) NukeObjectStores() error {
 
 			c.logger.Infof("finding object store credential for object store %q", objStore.Name)
 
-			credentialDetails, err := c.client.FindObjectStoreCredential(objStore.Name)
+			credentialDetails, err := c.client.GetObjectStoreCredential(objStore.OwnerInfo.CredentialID)
 			if err != nil {
 				if errors.Is(err, civogo.ZeroMatchesError) {
 					c.logger.Infof("no object store credentials for object store %q", objStore.Name)

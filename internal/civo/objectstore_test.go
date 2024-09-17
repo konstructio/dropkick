@@ -20,7 +20,7 @@ func TestNukeObjectStores(t *testing.T) {
 			FnDeleteObjectStore: func(id string) (*civogo.SimpleResponse, error) {
 				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
 			},
-			FnFindObjectStoreCredential: func(search string) (*civogo.ObjectStoreCredential, error) {
+			FnGetObjectStoreCredential: func(id string) (*civogo.ObjectStoreCredential, error) {
 				return &civogo.ObjectStoreCredential{ID: "cred1", Name: "test-cred1"}, nil
 			},
 			FnDeleteObjectStoreCredential: func(id string) (*civogo.SimpleResponse, error) {
@@ -77,7 +77,7 @@ func TestNukeObjectStores(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnFindObjectStoreCredential: func(search string) (*civogo.ObjectStoreCredential, error) {
+			FnGetObjectStoreCredential: func(id string) (*civogo.ObjectStoreCredential, error) {
 				return nil, civogo.ZeroMatchesError
 			},
 			FnDeleteObjectStore: func(id string) (*civogo.SimpleResponse, error) {
@@ -133,7 +133,7 @@ func TestNukeObjectStores(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnFindObjectStoreCredential: func(search string) (*civogo.ObjectStoreCredential, error) {
+			FnGetObjectStoreCredential: func(id string) (*civogo.ObjectStoreCredential, error) {
 				return nil, civogo.ZeroMatchesError
 			},
 		}

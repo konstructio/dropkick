@@ -28,7 +28,7 @@ type mockCivoClient struct {
 	FnFindNetwork                 func(search string) (*civogo.Network, error)
 	FnDeleteNetwork               func(id string) (*civogo.SimpleResponse, error)
 	FnListObjectStoreCredentials  func() (*civogo.PaginatedObjectStoreCredentials, error)
-	FnFindObjectStoreCredential   func(search string) (*civogo.ObjectStoreCredential, error)
+	FnGetObjectStoreCredential    func(id string) (*civogo.ObjectStoreCredential, error)
 	FnDeleteObjectStoreCredential func(id string) (*civogo.SimpleResponse, error)
 	FnListObjectStores            func() (*civogo.PaginatedObjectstores, error)
 	FnDeleteObjectStore           func(id string) (*civogo.SimpleResponse, error)
@@ -132,12 +132,12 @@ func (m *mockCivoClient) ListObjectStoreCredentials() (*civogo.PaginatedObjectSt
 	return m.FnListObjectStoreCredentials()
 }
 
-func (m *mockCivoClient) FindObjectStoreCredential(search string) (*civogo.ObjectStoreCredential, error) {
-	if m.FnFindObjectStoreCredential == nil {
-		return nil, &errNotImplemented{funcName: "FindObjectStoreCredential"}
+func (m *mockCivoClient) GetObjectStoreCredential(id string) (*civogo.ObjectStoreCredential, error) {
+	if m.FnGetObjectStoreCredential == nil {
+		return nil, &errNotImplemented{funcName: "GetObjectStoreCredential"}
 	}
 
-	return m.FnFindObjectStoreCredential(search)
+	return m.FnGetObjectStoreCredential(id)
 }
 
 func (m *mockCivoClient) DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error) {
