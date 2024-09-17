@@ -100,6 +100,7 @@ type client interface {
 	ListFirewalls() ([]civogo.Firewall, error)
 	DeleteFirewall(id string) (*civogo.SimpleResponse, error)
 	ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error)
+	FindObjectStoreCredential(search string) (*civogo.ObjectStoreCredential, error)
 	DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error)
 	ListObjectStores() (*civogo.PaginatedObjectstores, error)
 	DeleteObjectStore(id string) (*civogo.SimpleResponse, error)
