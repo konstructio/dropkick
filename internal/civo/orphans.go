@@ -10,11 +10,12 @@ import (
 // instance in the Civo account targeted. It returns an error if the deletion
 // process encounters any issues. The resources targeted by this function are:
 // - Volumes
+// - Object store credentials
 // - SSH keys
 // - Networks
 // - Firewalls
 func (c *Civo) NukeOrphanedResources() error {
-	c.logger.Infof("orphaned resources enabled: looking for volumes, SSH keys, networks and firewalls not in use by any instances")
+	c.logger.Infof("orphaned resources enabled: looking for volumes, object store credentials, SSH keys, networks and firewalls not in use by any instances")
 
 	// fetch all nodes first, we'll need them to check for orphaned resources
 	c.logger.Infof("fetching all instances")
@@ -35,6 +36,18 @@ func (c *Civo) NukeOrphanedResources() error {
 
 	if err := c.deleteVolumes(orphanedVolumes); err != nil {
 		return fmt.Errorf("unable to delete orphaned volumes: %w", err)
+	}
+
+	// fetch orphaned object store credentials
+	orphanedObjectStoreCredentials, err := c.getOrphanedObjectStoreCredentials()
+	if err != nil {
+		return fmt.Errorf("unable to fetch orphaned object store credentials: %w", err)
+	}
+
+	c.logger.Infof("found %d orphaned object store credentials", len(orphanedObjectStoreCredentials))
+
+	if err := c.deleteObjectStoreCredentials(orphanedObjectStoreCredentials); err != nil {
+		return fmt.Errorf("unable to delete orphaned object store credentials: %w", err)
 	}
 
 	// fetch orphaned SSH keys
@@ -71,6 +84,71 @@ func (c *Civo) NukeOrphanedResources() error {
 
 	if err := c.deleteFirewalls(orphanedFirewalls); err != nil {
 		return fmt.Errorf("unable to delete orphaned firewalls: %w", err)
+	}
+
+	return nil
+}
+
+// getOrphanedObjectStoreCredentials fetches all object store then the object
+// store credentials and compares them against each other. If a credential is
+// not used by any store, it is considered orphaned. It returns an error if the
+// fetching process encounters any issues.
+func (c *Civo) getOrphanedObjectStoreCredentials() ([]civogo.ObjectStoreCredential, error) {
+	c.logger.Infof("listing object stores")
+
+	objectStores, err := c.client.ListObjectStores()
+	if err != nil {
+		return nil, fmt.Errorf("unable to list object stores: %w", err)
+	}
+
+	c.logger.Infof("found %d object stores", len(objectStores.Items))
+
+	credentials, err := c.client.ListObjectStoreCredentials()
+	if err != nil {
+		return nil, fmt.Errorf("unable to list object store credentials: %w", err)
+	}
+
+	c.logger.Infof("found %d object store credentials", len(credentials.Items))
+
+	// iterate over all object stores and check if they are associated with any credentials
+	orphanedCredentials := make([]civogo.ObjectStoreCredential, 0)
+	for _, credential := range credentials.Items {
+		var found bool
+
+		// iterate through the object stores finding if they use the current credential
+		for _, objectStore := range objectStores.Items {
+			if objectStore.OwnerInfo.CredentialID == credential.ID {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			c.logger.Infof("found orphaned object store credential %q - ID: %q", credential.Name, credential.ID)
+			orphanedCredentials = append(orphanedCredentials, credential)
+		}
+	}
+
+	return orphanedCredentials, nil
+}
+
+// deleteObjectStoreCredentials deletes all object store credentials in the
+// provided list. It returns an error if the deletion process encounters any
+// issues.
+func (c *Civo) deleteObjectStoreCredentials(credentials []civogo.ObjectStoreCredential) error {
+	for _, credential := range credentials {
+		if !c.nuke {
+			c.logger.Warnf("refusing to delete object store credential %q: nuke is not enabled", credential.Name)
+			continue
+		}
+
+		c.logger.Infof("deleting object store credential %q", credential.Name)
+
+		if _, err := c.client.DeleteObjectStoreCredential(credential.ID); err != nil {
+			return fmt.Errorf("unable to delete object store credential %s: %w", credential.Name, err)
+		}
+
+		c.logger.Infof("deleted object store credential %s", credential.Name)
 	}
 
 	return nil

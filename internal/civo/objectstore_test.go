@@ -150,6 +150,73 @@ func TestNukeObjectStores(t *testing.T) {
 			tt.Errorf("expected error to be nil, got %v", err)
 		}
 	})
+
+	t.Run("delete object store but no credential found", func(tt *testing.T) {
+		mockClient := &mockCivoClient{
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) {
+				return &civogo.PaginatedObjectstores{
+					Items: []civogo.ObjectStore{{ID: "objStore1", Name: "test-store1"}},
+					Pages: 1,
+				}, nil
+			},
+			FnGetObjectStoreCredential: func(id string) (*civogo.ObjectStoreCredential, error) {
+				return nil, civogo.ZeroMatchesError
+			},
+			FnDeleteObjectStore: func(id string) (*civogo.SimpleResponse, error) {
+				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
+			},
+		}
+
+		c := &Civo{
+			client:     mockClient,
+			logger:     &mockLogger{os.Stderr},
+			nameFilter: "",
+			nuke:       true,
+		}
+
+		err := c.NukeObjectStores()
+		if err != nil {
+			tt.Errorf("expected error to be nil, got %v", err)
+		}
+	})
+
+	t.Run("error finding object store credential", func(tt *testing.T) {
+		errTest := errors.New("test error")
+
+		mockClient := &mockCivoClient{
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) {
+				return &civogo.PaginatedObjectstores{
+					Items: []civogo.ObjectStore{{ID: "objStore1", Name: "test-store1"}},
+					Pages: 1,
+				}, nil
+			},
+			FnGetObjectStoreCredential: func(id string) (*civogo.ObjectStoreCredential, error) {
+				return nil, errTest
+			},
+			FnDeleteObjectStore: func(id string) (*civogo.SimpleResponse, error) {
+				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
+			},
+			FnDeleteObjectStoreCredential: func(id string) (*civogo.SimpleResponse, error) {
+				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
+			},
+		}
+
+		c := &Civo{
+			client:     mockClient,
+			logger:     &mockLogger{os.Stderr},
+			nameFilter: "",
+			nuke:       true,
+		}
+
+		err := c.NukeObjectStores()
+		if err == nil {
+			tt.Errorf("expected error to be %v, got nil", errTest)
+		}
+
+		if !errors.Is(err, errTest) {
+			tt.Errorf("expected error to be %v, got %v", errTest, err)
+		}
+	})
 }
 
 func TestNukeObjectStoreCredentials(t *testing.T) {

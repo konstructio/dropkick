@@ -36,7 +36,7 @@ func getCivoCommand() *cobra.Command {
 	civoCmd.Flags().BoolVar(&opts.nuke, "nuke", false, "required to confirm deletion of resources")
 	civoCmd.Flags().StringVar(&opts.region, "region", "", "the civo region to clean")
 	civoCmd.Flags().StringVar(&opts.nameFilter, "name-contains", "", "if set, only resources with a name containing this string will be selected")
-	civoCmd.Flags().BoolVar(&opts.onlyOrphans, "orphans-only", false, "only delete orphaned resources (only volumes, SSH keys and networks)")
+	civoCmd.Flags().BoolVar(&opts.onlyOrphans, "orphans-only", false, "only delete orphaned resources (only volumes, object store credentials, SSH keys, networks and firewalls)")
 
 	// On orphaned resources, we don't want to filter by name since the
 	// filter is already that's just for the resources we want to delete
