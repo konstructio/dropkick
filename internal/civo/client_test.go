@@ -268,15 +268,33 @@ func TestNew(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.Name, func(tt *testing.T) {
-			opts := append([]Option{
-				WithToken(tc.Token),
-				WithRegion(tc.Region),
-				WithAPIURL(tc.APIURL),
-				WithContext(tc.Context),
-				WithLogger(tc.Logger),
-				WithNuke(tc.Nuke),
-				WithNameFilter(tc.NameFilter),
-			}, tc.Opts...)
+			opts := append([]Option{}, tc.Opts...)
+
+			if tc.Token != "" {
+				opts = append(opts, WithToken(tc.Token))
+			}
+
+			if tc.Region != "" {
+				opts = append(opts, WithRegion(tc.Region))
+			}
+
+			if tc.APIURL != "" {
+				opts = append(opts, WithAPIURL(tc.APIURL))
+			}
+
+			if tc.Context != nil {
+				opts = append(opts, WithContext(tc.Context))
+			}
+
+			if tc.Logger != nil {
+				opts = append(opts, WithLogger(tc.Logger))
+			}
+
+			if tc.NameFilter != "" {
+				opts = append(opts, WithNameFilter(tc.NameFilter))
+			}
+
+			opts = append(opts, WithNuke(tc.Nuke))
 
 			client, err := New(opts...)
 
