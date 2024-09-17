@@ -12,8 +12,9 @@ import (
 // - Volumes
 // - SSH keys
 // - Networks
+// - Firewalls
 func (c *Civo) NukeOrphanedResources() error {
-	c.logger.Infof("orphaned resources enabled: looking for volumes, SSH keys, and networks not in use by any instances")
+	c.logger.Infof("orphaned resources enabled: looking for volumes, SSH keys, networks and firewalls not in use by any instances")
 
 	// fetch all nodes first, we'll need them to check for orphaned resources
 	c.logger.Infof("fetching all instances")
