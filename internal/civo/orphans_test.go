@@ -3,6 +3,7 @@ package civo
 import (
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/civo/civogo"
@@ -657,6 +658,10 @@ func TestGetOrphanedNetworks(t *testing.T) {
 func TestGetOrphanedFirewalls(t *testing.T) {
 	t.Run("successfully fetch orphaned firewalls", func(tt *testing.T) {
 		mockClient := &mockCivoClient{
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListFirewalls: func() ([]civogo.Firewall, error) {
 				return []civogo.Firewall{
 					{ID: "firewall1", Name: "firewall1", ClusterCount: 0, InstanceCount: 0, LoadBalancerCount: 0},
@@ -749,6 +754,25 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) {
+				return &civogo.PaginatedObjectstores{
+					Items: []civogo.ObjectStore{
+						{ID: "objectstore1", Name: "objectstore1", OwnerInfo: civogo.BucketOwner{CredentialID: "credential1"}},
+						{ID: "objectstore2", Name: "orphan-objectstore2", OwnerInfo: civogo.BucketOwner{CredentialID: "credential2"}},
+					},
+					Page: 1,
+				}, nil
+			},
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{
+					Items: []civogo.ObjectStoreCredential{
+						{ID: "credential1", Name: "credential1"},
+						{ID: "credential2", Name: "orphan-credential2"},
+						{ID: "credential3", Name: "credential3"},
+					},
+					Page: 1,
+				}, nil
+			},
 			FnListVolumes: func() ([]civogo.Volume, error) {
 				return []civogo.Volume{
 					{ID: "volume1", Name: "orphan-volume1", Status: "available"},
@@ -770,6 +794,9 @@ func TestNukeOrphanedResources(t *testing.T) {
 				return []civogo.Firewall{
 					{ID: "firewall1", Name: "orphan-firewall1", ClusterCount: 0, InstanceCount: 0, LoadBalancerCount: 0},
 				}, nil
+			},
+			FnDeleteObjectStoreCredential: func(id string) (*civogo.SimpleResponse, error) {
+				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
 			},
 			FnDeleteVolume: func(id string) (*civogo.SimpleResponse, error) {
 				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
@@ -912,9 +939,13 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnListVolumes:   func() ([]civogo.Volume, error) { return nil, nil },
-			FnListNetworks:  func() ([]civogo.Network, error) { return nil, nil },
-			FnListFirewalls: func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListNetworks:     func() ([]civogo.Network, error) { return nil, nil },
+			FnListFirewalls:    func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListSSHKeys: func() ([]civogo.SSHKey, error) {
 				return nil, errTest
 			},
@@ -948,9 +979,13 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnListVolumes:   func() ([]civogo.Volume, error) { return nil, nil },
-			FnListNetworks:  func() ([]civogo.Network, error) { return nil, nil },
-			FnListFirewalls: func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListNetworks:     func() ([]civogo.Network, error) { return nil, nil },
+			FnListFirewalls:    func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListSSHKeys: func() ([]civogo.SSHKey, error) {
 				return []civogo.SSHKey{
 					{ID: "key1", Name: "key1"},
@@ -991,8 +1026,12 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnListVolumes: func() ([]civogo.Volume, error) { return nil, nil },
-			FnListSSHKeys: func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListSSHKeys:      func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListNetworks: func() ([]civogo.Network, error) {
 				return nil, errTest
 			},
@@ -1026,9 +1065,13 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnListVolumes:   func() ([]civogo.Volume, error) { return nil, nil },
-			FnListSSHKeys:   func() ([]civogo.SSHKey, error) { return nil, nil },
-			FnListFirewalls: func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListSSHKeys:      func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListFirewalls:    func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListNetworks: func() ([]civogo.Network, error) {
 				return []civogo.Network{
 					{ID: "network1", Name: "network1"},
@@ -1069,9 +1112,13 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnListVolumes:  func() ([]civogo.Volume, error) { return nil, nil },
-			FnListSSHKeys:  func() ([]civogo.SSHKey, error) { return nil, nil },
-			FnListNetworks: func() ([]civogo.Network, error) { return nil, nil },
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListSSHKeys:      func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListNetworks:     func() ([]civogo.Network, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListFirewalls: func() ([]civogo.Firewall, error) {
 				return nil, errTest
 			},
@@ -1105,9 +1152,13 @@ func TestNukeOrphanedResources(t *testing.T) {
 					Pages: 1,
 				}, nil
 			},
-			FnListVolumes:  func() ([]civogo.Volume, error) { return nil, nil },
-			FnListSSHKeys:  func() ([]civogo.SSHKey, error) { return nil, nil },
-			FnListNetworks: func() ([]civogo.Network, error) { return nil, nil },
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListSSHKeys:      func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListNetworks:     func() ([]civogo.Network, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{}, nil
+			},
 			FnListFirewalls: func() ([]civogo.Firewall, error) {
 				return []civogo.Firewall{
 					{ID: "firewall1", Name: "orphan-firewall1", ClusterCount: 0, InstanceCount: 0, LoadBalancerCount: 0},
@@ -1125,6 +1176,111 @@ func TestNukeOrphanedResources(t *testing.T) {
 		}
 
 		err := c.NukeOrphanedResources()
+		if err == nil {
+			tt.Errorf("expected error to be %v, got nil", errTest)
+		}
+
+		if !errors.Is(err, errTest) {
+			tt.Errorf("expected error to be %v, got %v", errTest, err)
+		}
+	})
+}
+
+func TestCivo_getOrphanedObjectStoreCredentials(t *testing.T) {
+	t.Run("successfully fetch orphaned object store credentials", func(tt *testing.T) {
+		mockClient := &mockCivoClient{
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) {
+				return &civogo.PaginatedObjectstores{
+					Items: []civogo.ObjectStore{
+						{ID: "objectstore1", Name: "objectstore1", OwnerInfo: civogo.BucketOwner{CredentialID: "credential1"}},
+						{ID: "objectstore2", Name: "objectstore2", OwnerInfo: civogo.BucketOwner{CredentialID: "credential2"}},
+					},
+					Pages: 1,
+				}, nil
+			},
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{
+					Items: []civogo.ObjectStoreCredential{
+						{ID: "credential1", Name: "credential1"},
+						{ID: "credential2", Name: "credential2"},
+						{ID: "credential3", Name: "credential3"},
+						{ID: "credential4", Name: "credential4"},
+					},
+					Pages: 1,
+				}, nil
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+			nuke:   true,
+		}
+
+		got, err := c.getOrphanedObjectStoreCredentials()
+		if err != nil {
+			t.Fatalf("expected error to be nil, got %v", err)
+		}
+
+		expectedResponse := []civogo.ObjectStoreCredential{
+			{ID: "credential3", Name: "credential3"},
+			{ID: "credential4", Name: "credential4"},
+		}
+
+		if !reflect.DeepEqual(got, expectedResponse) {
+			t.Errorf("expected response to be %#v, got %#v", expectedResponse, got)
+		}
+	})
+
+	t.Run("error listing object stores", func(tt *testing.T) {
+		errTest := errors.New("test error")
+
+		mockClient := &mockCivoClient{
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) {
+				return nil, errTest
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+			nuke:   true,
+		}
+
+		_, err := c.getOrphanedObjectStoreCredentials()
+		if err == nil {
+			tt.Errorf("expected error to be %v, got nil", errTest)
+		}
+
+		if !errors.Is(err, errTest) {
+			tt.Errorf("expected error to be %v, got %v", errTest, err)
+		}
+	})
+
+	t.Run("error listing object store credentials", func(tt *testing.T) {
+		errTest := errors.New("test error")
+
+		mockClient := &mockCivoClient{
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) {
+				return &civogo.PaginatedObjectstores{
+					Items: []civogo.ObjectStore{
+						{ID: "objectstore1", Name: "objectstore1", OwnerInfo: civogo.BucketOwner{CredentialID: "credential1"}},
+					},
+					Pages: 1,
+				}, nil
+			},
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return nil, errTest
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+			nuke:   true,
+		}
+
+		_, err := c.getOrphanedObjectStoreCredentials()
 		if err == nil {
 			tt.Errorf("expected error to be %v, got nil", errTest)
 		}

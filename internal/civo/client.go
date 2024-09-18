@@ -100,6 +100,7 @@ type client interface {
 	ListFirewalls() ([]civogo.Firewall, error)
 	DeleteFirewall(id string) (*civogo.SimpleResponse, error)
 	ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error)
+	GetObjectStoreCredential(id string) (*civogo.ObjectStoreCredential, error)
 	DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error)
 	ListObjectStores() (*civogo.PaginatedObjectstores, error)
 	DeleteObjectStore(id string) (*civogo.SimpleResponse, error)
@@ -138,13 +139,6 @@ func New(opts ...Option) (*Civo, error) {
 		c.apiURL = civoAPIURL
 	}
 
-	civoClient, err := civogo.NewClientWithURL(c.token, c.apiURL, c.region)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create new client: %w", err)
-	}
-
-	c.client = civoClient
-
 	if c.context == nil {
 		c.context = context.Background()
 	}
@@ -152,6 +146,13 @@ func New(opts ...Option) (*Civo, error) {
 	if c.logger == nil {
 		c.logger = logger.None
 	}
+
+	civoClient, err := civogo.NewClientWithURL(c.token, c.apiURL, c.region)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create new client: %w", err)
+	}
+
+	c.client = civoClient
 
 	return c, nil
 }

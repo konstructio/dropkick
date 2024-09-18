@@ -1,8 +1,10 @@
 package civo
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/civo/civogo"
 	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
@@ -31,6 +33,19 @@ func (c *Civo) NukeObjectStores() error {
 				continue
 			}
 
+			c.logger.Infof("finding object store credential for object store %q", objStore.Name)
+
+			credentialDetails, err := c.client.GetObjectStoreCredential(objStore.OwnerInfo.CredentialID)
+			if err != nil {
+				if errors.Is(err, civogo.ZeroMatchesError) {
+					c.logger.Infof("no object store credentials for object store %q", objStore.Name)
+				} else {
+					return fmt.Errorf("unable to find object store credential %q: %w", objStore.Name, err)
+				}
+			} else {
+				c.logger.Infof("found object store credential %q - ID: %q", credentialDetails.Name, credentialDetails.ID)
+			}
+
 			if c.nuke {
 				c.logger.Infof("deleting object store %q", objStore.Name)
 
@@ -40,13 +55,15 @@ func (c *Civo) NukeObjectStores() error {
 
 				outputwriter.WriteStdoutf("deleted object store %q", objStore.Name)
 
-				c.logger.Infof("deleting object store credential %q", objStore.Name)
+				if credentialDetails != nil {
+					c.logger.Infof("deleting object store credential %q with ID %q", credentialDetails.Name, credentialDetails.ID)
 
-				if _, err = c.client.DeleteObjectStoreCredential(objStore.ID); err != nil {
-					return fmt.Errorf("unable to delete object store credential %q: %w", objStore.Name, err)
+					if _, err = c.client.DeleteObjectStoreCredential(credentialDetails.ID); err != nil {
+						return fmt.Errorf("unable to delete object store credential %q (ID: %q): %w", credentialDetails.Name, credentialDetails.ID, err)
+					}
+
+					outputwriter.WriteStdoutf("deleted object store credential %q with ID %q", credentialDetails.Name, credentialDetails.ID)
 				}
-
-				outputwriter.WriteStdoutf("deleted object store credential %q", objStore.Name)
 			} else {
 				c.logger.Warnf("refusing to delete object store %q: nuke is not enabled", objStore.Name)
 			}
