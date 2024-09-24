@@ -148,7 +148,7 @@ func (c *Civo) deleteObjectStoreCredentials(credentials []civogo.ObjectStoreCred
 			return fmt.Errorf("unable to delete object store credential %s: %w", credential.Name, err)
 		}
 
-		c.logger.Infof("deleted object store credential %s", credential.Name)
+		c.logger.Infof("deleted object store credential %q", credential.Name)
 	}
 
 	return nil
@@ -166,7 +166,7 @@ func (c *Civo) deleteVolumes(volumes []civogo.Volume) error {
 		c.logger.Infof("deleting volume %q", volume.Name)
 
 		if _, err := c.client.DeleteVolume(volume.ID); err != nil {
-			return fmt.Errorf("unable to delete volume %s: %w", volume.Name, err)
+			return fmt.Errorf("unable to delete volume %q: %w", volume.Name, err)
 		}
 
 		c.logger.Infof("deleted volume %s", volume.Name)
@@ -180,17 +180,17 @@ func (c *Civo) deleteVolumes(volumes []civogo.Volume) error {
 func (c *Civo) deleteSSHKeys(keys []civogo.SSHKey) error {
 	for _, key := range keys {
 		if !c.nuke {
-			c.logger.Warnf("refusing to delete SSH key %s: nuke is not enabled", key.Name)
+			c.logger.Warnf("refusing to delete SSH key %q: nuke is not enabled", key.Name)
 			continue
 		}
 
 		c.logger.Infof("deleting SSH key %q", key.Name)
 
 		if _, err := c.client.DeleteSSHKey(key.ID); err != nil {
-			return fmt.Errorf("unable to delete SSH key %s: %w", key.Name, err)
+			return fmt.Errorf("unable to delete SSH key %q: %w", key.Name, err)
 		}
 
-		c.logger.Infof("deleted SSH key %s", key.Name)
+		c.logger.Infof("deleted SSH key %q", key.Name)
 	}
 
 	return nil
@@ -201,7 +201,7 @@ func (c *Civo) deleteSSHKeys(keys []civogo.SSHKey) error {
 func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 	for _, network := range networks {
 		if !c.nuke {
-			c.logger.Warnf("refusing to delete network %s: nuke is not enabled", network.Name)
+			c.logger.Warnf("refusing to delete network %q: nuke is not enabled", network.Name)
 			continue
 		}
 
@@ -211,7 +211,7 @@ func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 			return fmt.Errorf("unable to delete network %s: %w", network.Name, err)
 		}
 
-		c.logger.Infof("deleted network %s", network.Name)
+		c.logger.Infof("deleted network %q", network.Name)
 	}
 
 	return nil
@@ -222,7 +222,7 @@ func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
 	for _, firewall := range firewalls {
 		if !c.nuke {
-			c.logger.Warnf("refusing to delete firewall %s: nuke is not enabled", firewall.Name)
+			c.logger.Warnf("refusing to delete firewall %q: nuke is not enabled", firewall.Name)
 			continue
 		}
 
@@ -230,10 +230,10 @@ func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
 
 		_, err := c.client.DeleteFirewall(firewall.ID)
 		if err != nil {
-			return fmt.Errorf("unable to delete firewall %s: %w", firewall.Name, err)
+			return fmt.Errorf("unable to delete firewall %q: %w", firewall.Name, err)
 		}
 
-		c.logger.Infof("deleted firewall %s", firewall.Name)
+		c.logger.Infof("deleted firewall %q", firewall.Name)
 	}
 
 	return nil
