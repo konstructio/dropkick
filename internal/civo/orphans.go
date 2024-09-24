@@ -26,12 +26,17 @@ func (c *Civo) NukeOrphanedResources() error {
 
 	c.logger.Infof("found %d instances", len(nodes))
 
-	// fetch orphaned volumes
-	orphanedVolumes, err := c.getOrphanedVolumes()
+	// fetch volumes
+	c.logger.Infof("fetching volumes")
+	volumes, err := c.getVolumes()
 	if err != nil {
-		return fmt.Errorf("unable to fetch orphaned volumes: %w", err)
+		return fmt.Errorf("unable to fetch volumes: %w", err)
 	}
 
+	c.logger.Infof("found %d volumes (still need to check for orphans)", len(volumes))
+
+	// fetch orphaned volumes
+	orphanedVolumes := c.getOrphanedVolumes(volumes)
 	c.logger.Infof("found %d orphaned volumes", len(orphanedVolumes))
 
 	if err := c.deleteVolumes(orphanedVolumes); err != nil {
@@ -63,7 +68,7 @@ func (c *Civo) NukeOrphanedResources() error {
 	}
 
 	// fetch orphaned networks
-	orphanedNetworks, err := c.getOrphanedNetworks(nodes)
+	orphanedNetworks, err := c.getOrphanedNetworks(nodes, volumes)
 	if err != nil {
 		return fmt.Errorf("unable to fetch orphaned networks: %w", err)
 	}
@@ -267,10 +272,9 @@ func (c *Civo) getAllNodes() ([]civogo.Instance, error) {
 	return nodes, nil
 }
 
-// getOrphanedVolumes fetches all volumes that are not attached to any node
-// instance instead of relying if they are referenced by a node instance. It
-// returns an error if the fetching process encounters any issues.
-func (c *Civo) getOrphanedVolumes() ([]civogo.Volume, error) {
+// getVolumes fetches all volumes in the Civo account. It returns an error if
+// the fetching process encounters any issues.
+func (c *Civo) getVolumes() ([]civogo.Volume, error) {
 	c.logger.Infof("listing volumes")
 
 	volumes, err := c.client.ListVolumes()
@@ -278,6 +282,13 @@ func (c *Civo) getOrphanedVolumes() ([]civogo.Volume, error) {
 		return nil, fmt.Errorf("unable to list volumes: %w", err)
 	}
 
+	return volumes, nil
+}
+
+// getOrphanedVolumes fetches all volumes that are not attached to any node
+// instance instead of relying if they are referenced by a node instance. It
+// returns an error if the fetching process encounters any issues.
+func (c *Civo) getOrphanedVolumes(volumes []civogo.Volume) []civogo.Volume {
 	newVolumeList := make([]civogo.Volume, 0, len(volumes))
 	for _, volume := range volumes {
 		if volume.Status == volumeStatusAttached {
@@ -289,7 +300,7 @@ func (c *Civo) getOrphanedVolumes() ([]civogo.Volume, error) {
 		newVolumeList = append(newVolumeList, volume)
 	}
 
-	return newVolumeList, nil
+	return newVolumeList
 }
 
 // getOrphanedSSHKeys fetches all SSH keys then compares them against the
@@ -332,7 +343,7 @@ func (c *Civo) getOrphanedSSHKeys(nodes []civogo.Instance) ([]civogo.SSHKey, err
 // getOrphanedNetworks fetches all networks then compares them against the
 // provided list of nodes to determine if they are associated with any of
 // them. It returns an error if the fetching process encounters any issues.
-func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance) ([]civogo.Network, error) {
+func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance, volumes []civogo.Volume) ([]civogo.Network, error) {
 	c.logger.Infof("listing networks")
 
 	networks, err := c.client.ListNetworks()
@@ -350,6 +361,14 @@ func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance) ([]civogo.Network, e
 		// iterate through the nodes finding if they use the current network
 		for _, node := range nodes {
 			if node.NetworkID == network.ID {
+				found = true
+				break
+			}
+		}
+
+		// iterate through the volumes finding if they use the current network
+		for _, volume := range volumes {
+			if volume.NetworkID == network.ID {
 				found = true
 				break
 			}

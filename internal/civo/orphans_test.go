@@ -402,17 +402,19 @@ func TestGetOrphanedVolumes(t *testing.T) {
 			logger: &mockLogger{os.Stderr},
 		}
 
-		volumes, err := c.getOrphanedVolumes()
+		volumes, err := c.getVolumes()
 		if err != nil {
 			tt.Errorf("expected error to be nil, got %v", err)
 		}
 
-		if len(volumes) != 2 {
-			tt.Errorf("expected 2 orphaned volumes, got %d", len(volumes))
+		orphaned := c.getOrphanedVolumes(volumes)
+
+		if len(orphaned) != 2 {
+			tt.Errorf("expected 2 orphaned volumes, got %d", len(orphaned))
 		}
 
-		if volumes[0].ID != "volume1" || volumes[1].ID != "volume3" {
-			tt.Errorf("unexpected orphaned volumes: %v", volumes)
+		if orphaned[0].ID != "volume1" || orphaned[1].ID != "volume3" {
+			tt.Errorf("unexpected orphaned volumes: %v", orphaned)
 		}
 	})
 
@@ -430,7 +432,7 @@ func TestGetOrphanedVolumes(t *testing.T) {
 			logger: &mockLogger{os.Stderr},
 		}
 
-		_, err := c.getOrphanedVolumes()
+		_, err := c.getVolumes()
 		if err == nil {
 			tt.Errorf("expected error to be %v, got nil", errTest)
 		}
@@ -454,13 +456,15 @@ func TestGetOrphanedVolumes(t *testing.T) {
 			logger: &mockLogger{os.Stderr},
 		}
 
-		volumes, err := c.getOrphanedVolumes()
+		volumes, err := c.getVolumes()
 		if err != nil {
 			tt.Errorf("expected error to be nil, got %v", err)
 		}
 
-		if len(volumes) != 0 {
-			tt.Errorf("expected 0 orphaned volumes, got %d", len(volumes))
+		orphaned := c.getOrphanedVolumes(volumes)
+
+		if len(orphaned) != 0 {
+			tt.Errorf("expected 0 orphaned volumes, got %d", len(orphaned))
 		}
 	})
 }
@@ -577,12 +581,17 @@ func TestGetOrphanedNetworks(t *testing.T) {
 			{ID: "node2", NetworkID: "network2"},
 		}
 
+		volumes := []civogo.Volume{
+			{ID: "volume1", Name: "volume1", NetworkID: "network1"},
+			{ID: "volume2", Name: "volume2", NetworkID: "network2"},
+		}
+
 		c := &Civo{
 			client: mockClient,
 			logger: &mockLogger{os.Stderr},
 		}
 
-		orphanedNetworks, err := c.getOrphanedNetworks(nodes)
+		orphanedNetworks, err := c.getOrphanedNetworks(nodes, volumes)
 		if err != nil {
 			tt.Errorf("expected error to be nil, got %v", err)
 		}
@@ -600,6 +609,9 @@ func TestGetOrphanedNetworks(t *testing.T) {
 		errTest := errors.New("test error")
 
 		mockClient := &mockCivoClient{
+			FnListVolumes: func() ([]civogo.Volume, error) {
+				return nil, nil
+			},
 			FnListNetworks: func() ([]civogo.Network, error) {
 				return nil, errTest
 			},
@@ -614,7 +626,12 @@ func TestGetOrphanedNetworks(t *testing.T) {
 			logger: &mockLogger{os.Stderr},
 		}
 
-		_, err := c.getOrphanedNetworks(nodes)
+		volumes, err := c.getVolumes()
+		if err != nil {
+			tt.Errorf("expected error to be nil, got %v", err)
+		}
+
+		_, err = c.getOrphanedNetworks(nodes, volumes)
 		if err == nil {
 			tt.Errorf("expected error to be %v, got nil", errTest)
 		}
@@ -626,6 +643,9 @@ func TestGetOrphanedNetworks(t *testing.T) {
 
 	t.Run("no orphaned networks", func(tt *testing.T) {
 		mockClient := &mockCivoClient{
+			FnListVolumes: func() ([]civogo.Volume, error) {
+				return nil, nil
+			},
 			FnListNetworks: func() ([]civogo.Network, error) {
 				return []civogo.Network{
 					{ID: "network1", Name: "network1"},
@@ -644,7 +664,12 @@ func TestGetOrphanedNetworks(t *testing.T) {
 			logger: &mockLogger{os.Stderr},
 		}
 
-		orphanedNetworks, err := c.getOrphanedNetworks(nodes)
+		volumes, err := c.getVolumes()
+		if err != nil {
+			tt.Errorf("expected error to be nil, got %v", err)
+		}
+
+		orphanedNetworks, err := c.getOrphanedNetworks(nodes, volumes)
 		if err != nil {
 			tt.Errorf("expected error to be nil, got %v", err)
 		}
@@ -1184,6 +1209,80 @@ func TestNukeOrphanedResources(t *testing.T) {
 			tt.Errorf("expected error to be %v, got %v", errTest, err)
 		}
 	})
+
+	t.Run("error fetching orphaned object store credentials", func(tt *testing.T) {
+		errTest := errors.New("test error")
+
+		mockClient := &mockCivoClient{
+			FnListInstances: func(page int, perPage int) (*civogo.PaginatedInstanceList, error) {
+				return &civogo.PaginatedInstanceList{Items: nil, Pages: 1}, nil
+			},
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListSSHKeys:      func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListNetworks:     func() ([]civogo.Network, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListFirewalls:    func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return nil, errTest
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+		}
+
+		err := c.NukeOrphanedResources()
+		if err == nil {
+			tt.Errorf("expected error to be %v, got nil", errTest)
+		}
+
+		if !errors.Is(err, errTest) {
+			tt.Errorf("expected error to be %v, got %v", errTest, err)
+		}
+	})
+
+	t.Run("error deleting orphaned object store credentials", func(tt *testing.T) {
+		errTest := errors.New("test error")
+
+		mockClient := &mockCivoClient{
+			FnListInstances: func(page int, perPage int) (*civogo.PaginatedInstanceList, error) {
+				return &civogo.PaginatedInstanceList{Items: nil, Pages: 1}, nil
+			},
+			FnListVolumes:      func() ([]civogo.Volume, error) { return nil, nil },
+			FnListSSHKeys:      func() ([]civogo.SSHKey, error) { return nil, nil },
+			FnListNetworks:     func() ([]civogo.Network, error) { return nil, nil },
+			FnListObjectStores: func() (*civogo.PaginatedObjectstores, error) { return &civogo.PaginatedObjectstores{}, nil },
+			FnListFirewalls:    func() ([]civogo.Firewall, error) { return nil, nil },
+			FnListObjectStoreCredentials: func() (*civogo.PaginatedObjectStoreCredentials, error) {
+				return &civogo.PaginatedObjectStoreCredentials{
+					Items: []civogo.ObjectStoreCredential{
+						{ID: "credential1", Name: "orphan-credential1"},
+						{ID: "credential2", Name: "orphan-credential2"},
+					},
+					Page: 1,
+				}, nil
+			},
+			FnDeleteObjectStoreCredential: func(id string) (*civogo.SimpleResponse, error) {
+				return nil, errTest
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+			nuke:   true,
+		}
+
+		err := c.NukeOrphanedResources()
+		if err == nil {
+			tt.Errorf("expected error to be %v, got nil", errTest)
+		}
+
+		if !errors.Is(err, errTest) {
+			tt.Errorf("expected error to be %v, got %v", errTest, err)
+		}
+	})
 }
 
 func TestCivo_getOrphanedObjectStoreCredentials(t *testing.T) {
@@ -1281,6 +1380,60 @@ func TestCivo_getOrphanedObjectStoreCredentials(t *testing.T) {
 		}
 
 		_, err := c.getOrphanedObjectStoreCredentials()
+		if err == nil {
+			tt.Errorf("expected error to be %v, got nil", errTest)
+		}
+
+		if !errors.Is(err, errTest) {
+			tt.Errorf("expected error to be %v, got %v", errTest, err)
+		}
+	})
+
+	t.Run("successfully delete object store credentials", func(tt *testing.T) {
+		mockClient := &mockCivoClient{
+			FnDeleteObjectStoreCredential: func(id string) (*civogo.SimpleResponse, error) {
+				return &civogo.SimpleResponse{ErrorCode: "200"}, nil
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+			nuke:   true,
+		}
+
+		credentials := []civogo.ObjectStoreCredential{
+			{ID: "credential1", Name: "credential1"},
+			{ID: "credential2", Name: "credential2"},
+		}
+
+		err := c.deleteObjectStoreCredentials(credentials)
+		if err != nil {
+			tt.Errorf("expected error to be nil, got %v", err)
+		}
+	})
+
+	t.Run("failed to delete object store credentials", func(tt *testing.T) {
+		errTest := errors.New("test error")
+
+		mockClient := &mockCivoClient{
+			FnDeleteObjectStoreCredential: func(id string) (*civogo.SimpleResponse, error) {
+				return nil, errTest
+			},
+		}
+
+		c := &Civo{
+			client: mockClient,
+			logger: &mockLogger{os.Stderr},
+			nuke:   true,
+		}
+
+		credentials := []civogo.ObjectStoreCredential{
+			{ID: "credential1", Name: "credential1"},
+			{ID: "credential2", Name: "credential2"},
+		}
+
+		err := c.deleteObjectStoreCredentials(credentials)
 		if err == nil {
 			tt.Errorf("expected error to be %v, got nil", errTest)
 		}
