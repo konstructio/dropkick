@@ -93,7 +93,9 @@ func getPaginated[T any](ctx context.Context, c *Client, endpoint string) ([]T, 
 func getSinglePage[T any](ctx context.Context, c *Client, endpoint string) ([]T, error) {
 	var resp []T
 
-	err := c.requester.doCivo(ctx, endpoint, "GET", &resp, nil)
+	params := map[string]string{"region": c.region}
+
+	err := c.requester.doCivo(ctx, endpoint, "GET", &resp, params)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get items: %w", err)
 	}

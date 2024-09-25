@@ -2,10 +2,8 @@ package civo
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/konstructio/dropkick/internal/civov2"
 	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
@@ -32,17 +30,6 @@ func (c *Civo) NukeObjectStores() error {
 
 		c.logger.Infof("finding object store credential for object store %q", objStore.Name)
 
-		credentialDetails, err := c.client.GetObjectStoreCredential(context.Background(), objStore.ID)
-		if err != nil {
-			if errors.Is(err, civov2.ErrNotFound) {
-				c.logger.Infof("no object store credentials for object store %q", objStore.Name)
-			} else {
-				return fmt.Errorf("unable to find object store credential %q: %w", objStore.Name, err)
-			}
-		} else {
-			c.logger.Infof("found object store credential %q - ID: %q", credentialDetails.Name, credentialDetails.ID)
-		}
-
 		if c.nuke {
 			c.logger.Infof("deleting object store %q", objStore.Name)
 
@@ -52,15 +39,14 @@ func (c *Civo) NukeObjectStores() error {
 
 			outputwriter.WriteStdoutf("deleted object store %q", objStore.Name)
 
-			if credentialDetails != nil {
-				c.logger.Infof("deleting object store credential %q with ID %q", credentialDetails.Name, credentialDetails.ID)
+			c.logger.Infof("deleting object store credential %q with ID %q", objStore.Credentials.Name, objStore.Credentials.ID)
 
-				if err = c.client.DeleteObjectStoreCredential(context.Background(), credentialDetails.ID); err != nil {
-					return fmt.Errorf("unable to delete object store credential %q (ID: %q): %w", credentialDetails.Name, credentialDetails.ID, err)
-				}
-
-				outputwriter.WriteStdoutf("deleted object store credential %q with ID %q", credentialDetails.Name, credentialDetails.ID)
+			if err = c.client.DeleteObjectStoreCredential(context.Background(), objStore.Credentials.ID); err != nil {
+				return fmt.Errorf("unable to delete object store credential %q (ID: %q): %w", objStore.Credentials.Name, objStore.Credentials.ID, err)
 			}
+
+			outputwriter.WriteStdoutf("deleted object store credential %q with ID %q", objStore.Credentials.Name, objStore.Credentials.ID)
+
 		} else {
 			c.logger.Warnf("refusing to delete object store %q: nuke is not enabled", objStore.Name)
 		}

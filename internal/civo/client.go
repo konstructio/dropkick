@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/konstructio/dropkick/internal/civov2"
 	"github.com/konstructio/dropkick/internal/logger"
@@ -90,6 +92,19 @@ type customLogger interface {
 
 var _ customLogger = &logger.Logger{}
 
+var debuggableHTTPClient = &http.Client{
+	Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		log.Printf(">>> %s: %s", req.Method, req.URL)
+		return http.DefaultTransport.RoundTrip(req)
+	}),
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 // New creates a new Civo with the given options.
 // It returns an error if the token or region is not set, or if it fails to create the underlying Civo API client.
 func New(opts ...Option) (*Civo, error) {
@@ -124,7 +139,7 @@ func New(opts ...Option) (*Civo, error) {
 	client, err := civov2.New(
 		civov2.WithLogger(c.logger),
 		civov2.WithRegion(c.region),
-		civov2.WithJSONClient(nil, c.apiURL, c.token),
+		civov2.WithJSONClient(debuggableHTTPClient, c.apiURL, c.token),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create Civo client: %w", err)
