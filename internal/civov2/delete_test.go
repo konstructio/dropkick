@@ -30,7 +30,7 @@ func Test_Delete(t *testing.T) {
 			requester: newCivoJSONClient(nil, srv.URL, ""),
 		}
 
-		if err := delete(client, context.Background(), "/v2/instances", id); err != nil {
+		if err := delete(context.Background(), client, "/v2/instances", id); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
@@ -49,7 +49,7 @@ func Test_Delete(t *testing.T) {
 			requester: newCivoJSONClient(nil, srv.URL, ""),
 		}
 
-		if err := delete(client, context.Background(), "/v2/instances", id); err == nil {
+		if err := delete(context.Background(), client, "/v2/instances", id); err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
 	})

@@ -36,7 +36,7 @@ func Test_GetByID(t *testing.T) {
 			requester: newCivoJSONClient(nil, srv.URL, region),
 		}
 
-		instance, err := getByID[Instance](client, context.Background(), "/v2/instances", id)
+		instance, err := getByID[Instance](context.Background(), client, "/v2/instances", id)
 		if err != nil {
 			t.Fatalf("not expecting an error, got %v", err)
 		}
@@ -59,7 +59,7 @@ func Test_GetByID(t *testing.T) {
 			requester: newCivoJSONClient(nil, srv.URL, "n/a"),
 		}
 
-		_, err := getByID[Instance](client, context.Background(), "/v2/instances", "foobar")
+		_, err := getByID[Instance](context.Background(), client, "/v2/instances", "foobar")
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}

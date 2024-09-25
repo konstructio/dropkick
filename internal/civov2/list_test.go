@@ -84,7 +84,7 @@ func Test_GetPaginatedGeneric(t *testing.T) {
 		// deliberately calling the generic function instead of `client.GetInstances()`
 		// since all the functions use the exact same code to fetch paginated results
 		// so there shouldn't be a need to test each one of them individually
-		instances, err := getPaginated[Instance](client, ctx, "/v2/instances")
+		instances, err := getPaginated[Instance](ctx, client, "/v2/instances")
 		if err != nil {
 			t.Fatalf("not expecting an error, got %v", err)
 		}
@@ -150,7 +150,7 @@ func Test_Paginated(t *testing.T) {
 			Name string `json:"name"`
 		}
 
-		instances, err := getPaginated[example](client, context.Background(), "/v2/instances")
+		instances, err := getPaginated[example](context.Background(), client, "/v2/instances")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -178,7 +178,7 @@ func Test_Paginated(t *testing.T) {
 			Name string `json:"name"`
 		}
 
-		instances, err := getPaginated[example](client, context.Background(), "/v2/instances")
+		instances, err := getPaginated[example](context.Background(), client, "/v2/instances")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -205,7 +205,7 @@ func Test_Paginated(t *testing.T) {
 			Name string `json:"name"`
 		}
 
-		_, err := getPaginated[example](client, context.Background(), "/v2/instances")
+		_, err := getPaginated[example](context.Background(), client, "/v2/instances")
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
