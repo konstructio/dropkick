@@ -1,7 +1,6 @@
 package civov2
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -80,15 +79,7 @@ func (e *HTTPError) Is(target error) bool {
 }
 
 // doCivo makes a raw HTTP request to the Civo API.
-func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, body, output interface{}, params map[string]string) error {
-	var buf bytes.Buffer
-
-	if body != nil {
-		if err := json.NewEncoder(&buf).Encode(body); err != nil {
-			return fmt.Errorf("unable to encode body to json: %w", err)
-		}
-	}
-
+func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
 	u, err := url.Parse(mergeHostPath(j.endpoint, location))
 	if err != nil {
 		return fmt.Errorf("unable to parse requested url: %w", err)
@@ -101,7 +92,7 @@ func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, bo
 
 	u.RawQuery = values.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), &buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("unable to create request: %w", err)
 	}

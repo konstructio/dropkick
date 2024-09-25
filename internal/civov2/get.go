@@ -55,7 +55,7 @@ func getByID[T any](ctx context.Context, client *Client, endpoint, id string) (*
 	params := map[string]string{"region": client.region}
 
 	fullpath := path.Join(endpoint, id)
-	if err := client.requester.doCivo(ctx, fullpath, http.MethodGet, nil, &output, params); err != nil {
+	if err := client.requester.doCivo(ctx, fullpath, http.MethodGet, &output, params); err != nil {
 		if errors.Is(err, &HTTPError{Code: http.StatusNotFound}) {
 			return nil, ErrNotFound
 		}

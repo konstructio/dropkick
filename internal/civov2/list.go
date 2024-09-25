@@ -73,7 +73,7 @@ func getPaginated[T any](ctx context.Context, c *Client, endpoint string) ([]T, 
 			Items   []T `json:"items"`
 		}
 
-		err := c.requester.doCivo(ctx, endpoint, "GET", nil, &resp, params)
+		err := c.requester.doCivo(ctx, endpoint, "GET", &resp, params)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get items: %w", err)
 		}
@@ -93,7 +93,7 @@ func getPaginated[T any](ctx context.Context, c *Client, endpoint string) ([]T, 
 func getSinglePage[T any](ctx context.Context, c *Client, endpoint string) ([]T, error) {
 	var resp []T
 
-	err := c.requester.doCivo(ctx, endpoint, "GET", nil, &resp, nil)
+	err := c.requester.doCivo(ctx, endpoint, "GET", &resp, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get items: %w", err)
 	}
