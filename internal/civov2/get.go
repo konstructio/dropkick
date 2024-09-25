@@ -9,43 +9,43 @@ import (
 )
 
 // GetInstance returns an instance by ID.
-func GetInstance(ctx context.Context, client *Client, id string) (*Instance, error) {
-	return getByID[Instance](ctx, client, "/v2/instances", id)
+func (c *Client) GetInstance(ctx context.Context, id string) (*Instance, error) {
+	return getByID[Instance](ctx, c, "/v2/instances", id)
 }
 
 // GetFirewall returns a firewall by ID.
-func GetFirewall(ctx context.Context, client *Client, id string) (*Firewall, error) {
-	return getByID[Firewall](ctx, client, "/v2/firewalls", id)
+func (c *Client) GetFirewall(ctx context.Context, id string) (*Firewall, error) {
+	return getByID[Firewall](ctx, c, "/v2/firewalls", id)
 }
 
 // GetVolume returns a volume by ID.
-func GetVolume(ctx context.Context, client *Client, id string) (*Volume, error) {
-	return getByID[Volume](ctx, client, "/v2/volumes", id)
+func (c *Client) GetVolume(ctx context.Context, id string) (*Volume, error) {
+	return getByID[Volume](ctx, c, "/v2/volumes", id)
 }
 
 // GetKubernetesCluster returns a Kubernetes cluster by ID.
-func GetKubernetesCluster(ctx context.Context, client *Client, id string) (*KubernetesCluster, error) {
-	return getByID[KubernetesCluster](ctx, client, "/v2/kubernetes/clusters", id)
+func (c *Client) GetKubernetesCluster(ctx context.Context, id string) (*KubernetesCluster, error) {
+	return getByID[KubernetesCluster](ctx, c, "/v2/kubernetes/clusters", id)
 }
 
 // GetNetwork returns a network by ID.
-func GetNetwork(ctx context.Context, client *Client, id string) (*Network, error) {
-	return getByID[Network](ctx, client, "/v2/networks", id)
+func (c *Client) GetNetwork(ctx context.Context, id string) (*Network, error) {
+	return getByID[Network](ctx, c, "/v2/networks", id)
 }
 
 // GetObjectStore returns an object store by ID.
-func GetObjectStore(ctx context.Context, client *Client, id string) (*ObjectStore, error) {
-	return getByID[ObjectStore](ctx, client, "/v2/objectstores", id)
+func (c *Client) GetObjectStore(ctx context.Context, id string) (*ObjectStore, error) {
+	return getByID[ObjectStore](ctx, c, "/v2/objectstores", id)
 }
 
 // GetObjectStoreCredential returns an object store credential by ID.
-func GetObjectStoreCredential(ctx context.Context, client *Client, id string) (*ObjectStoreCredential, error) {
-	return getByID[ObjectStoreCredential](ctx, client, "/v2/objectstore/credentials", id)
+func (c *Client) GetObjectStoreCredential(ctx context.Context, id string) (*ObjectStoreCredential, error) {
+	return getByID[ObjectStoreCredential](ctx, c, "/v2/objectstore/credentials", id)
 }
 
 // GetSSHKey returns an SSH key by ID.
-func GetSSHKey(ctx context.Context, client *Client, id string) (*SSHKey, error) {
-	return getByID[SSHKey](ctx, client, "/v2/sshkeys", id)
+func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKey, error) {
+	return getByID[SSHKey](ctx, c, "/v2/sshkeys", id)
 }
 
 // getByID is a helper function to get an item by ID from the Civo API.

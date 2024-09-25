@@ -88,7 +88,8 @@ func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, bo
 			return fmt.Errorf("unable to encode body to json: %w", err)
 		}
 	}
-	u, err := url.Parse(j.endpoint + location)
+
+	u, err := url.Parse(mergeHostPath(j.endpoint, location))
 	if err != nil {
 		return fmt.Errorf("unable to parse requested url: %w", err)
 	}

@@ -8,13 +8,13 @@ import (
 )
 
 // DeleteInstance deletes an instance.
-func (client *Client) DeleteInstance(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/instances", id)
+func (c *Client) DeleteInstance(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/instances", id)
 }
 
 // DeleteFirewall deletes a firewall.
-func (client *Client) DeleteFirewall(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/firewalls", id)
+func (c *Client) DeleteFirewall(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/firewalls", id)
 }
 
 // DeleteVolume deletes a volume.
@@ -23,28 +23,28 @@ func (client *Client) DeleteVolume(ctx context.Context, id string) error {
 }
 
 // DeleteKubernetesCluster deletes a Kubernetes cluster.
-func (client *Client) DeleteKubernetesCluster(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/kubernetes/clusters", id)
+func (c *Client) DeleteKubernetesCluster(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/kubernetes/clusters", id)
 }
 
 // DeleteNetwork deletes a network.
-func (client *Client) DeleteNetwork(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/networks", id)
+func (c *Client) DeleteNetwork(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/networks", id)
 }
 
 // DeleteObjectStore deletes an object store.
-func (client *Client) DeleteObjectStore(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/objectstores", id)
+func (c *Client) DeleteObjectStore(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/objectstores", id)
 }
 
 // DeleteObjectStoreCredential deletes an object store credential.
-func (client *Client) DeleteObjectStoreCredential(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/objectstore/credentials", id)
+func (c *Client) DeleteObjectStoreCredential(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/objectstore/credentials", id)
 }
 
 // DeleteSSHKey deletes an SSH key.
-func (client *Client) DeleteSSHKey(ctx context.Context, id string) error {
-	return delete(ctx, client, "/v2/sshkeys", id)
+func (c *Client) DeleteSSHKey(ctx context.Context, id string) error {
+	return delete(ctx, c, "/v2/sshkeys", id)
 }
 
 // delete is a helper function to delete an item via a HTTP DELETE request
