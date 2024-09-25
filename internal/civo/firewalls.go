@@ -1,6 +1,7 @@
 package civo
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/konstructio/dropkick/internal/compare"
@@ -12,7 +13,7 @@ import (
 func (c *Civo) NukeFirewalls() error {
 	c.logger.Infof("listing firewalls")
 
-	firewalls, err := c.client.ListFirewalls()
+	firewalls, err := c.client.GetAllFirewalls(context.Background())
 	if err != nil {
 		return fmt.Errorf("unable to list firewalls: %w", err)
 	}
@@ -30,7 +31,7 @@ func (c *Civo) NukeFirewalls() error {
 		if c.nuke {
 			c.logger.Infof("deleting firewall %q", firewall.Name)
 
-			_, err := c.client.DeleteFirewall(firewall.ID)
+			err := c.client.DeleteFirewall(context.Background(), firewall.ID)
 			if err != nil {
 				return fmt.Errorf("unable to delete firewall %q: %w", firewall.Name, err)
 			}

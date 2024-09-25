@@ -1,6 +1,7 @@
 package civo
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/konstructio/dropkick/internal/compare"
@@ -14,7 +15,7 @@ const volumeStatusAttached = "attached"
 func (c *Civo) NukeVolumes() error {
 	c.logger.Infof("listing volumes")
 
-	volumes, err := c.client.ListVolumes()
+	volumes, err := c.client.GetAllVolumes(context.Background())
 	if err != nil {
 		return fmt.Errorf("unable to list volumes: %w", err)
 	}
@@ -37,7 +38,7 @@ func (c *Civo) NukeVolumes() error {
 
 			c.logger.Infof("deleting volume %q", volume.Name)
 
-			if _, err := c.client.DeleteVolume(volume.ID); err != nil {
+			if err := c.client.DeleteVolume(context.Background(), volume.ID); err != nil {
 				return fmt.Errorf("unable to delete volume %s: %w", volume.Name, err)
 			}
 

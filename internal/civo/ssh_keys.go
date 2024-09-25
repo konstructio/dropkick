@@ -2,6 +2,7 @@
 package civo
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/konstructio/dropkick/internal/compare"
@@ -13,7 +14,7 @@ import (
 func (c *Civo) NukeSSHKeys() error {
 	c.logger.Infof("listing SSH keys")
 
-	keys, err := c.client.ListSSHKeys()
+	keys, err := c.client.GetAllSSHKeys(context.Background())
 	if err != nil {
 		return fmt.Errorf("unable to list SSH keys: %w", err)
 	}
@@ -31,7 +32,7 @@ func (c *Civo) NukeSSHKeys() error {
 		if c.nuke {
 			c.logger.Infof("deleting SSH key %q", key.Name)
 
-			if _, err := c.client.DeleteSSHKey(key.ID); err != nil {
+			if err := c.client.DeleteSSHKey(context.Background(), key.ID); err != nil {
 				return fmt.Errorf("unable to delete SSH key %s: %w", key.Name, err)
 			}
 

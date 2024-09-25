@@ -1,10 +1,11 @@
 package civo
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
-	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/civov2"
 	"github.com/konstructio/dropkick/internal/compare"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
@@ -14,14 +15,14 @@ import (
 func (c *Civo) NukeKubernetesClusters() error {
 	c.logger.Infof("listing Kubernetes clusters")
 
-	clusters, err := c.client.ListKubernetesClusters()
+	clusters, err := c.client.GetAllKubernetesClusters(context.Background())
 	if err != nil {
 		return fmt.Errorf("unable to list Kubernetes clusters: %w", err)
 	}
 
-	c.logger.Infof("found %d clusters", len(clusters.Items))
+	c.logger.Infof("found %d clusters", len(clusters))
 
-	for _, cluster := range clusters.Items {
+	for _, cluster := range clusters {
 		c.logger.Infof("found cluster: name: %q - ID: %q", cluster.Name, cluster.ID)
 
 		if c.nameFilter != "" && !compare.ContainsIgnoreCase(cluster.Name, c.nameFilter) {
@@ -29,10 +30,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 			continue
 		}
 
-		clusterVolumes, err := c.client.ListVolumesForCluster(cluster.ID)
-		if err != nil {
-			return fmt.Errorf("unable to list volumes for cluster %q: %w", cluster.Name, err)
-		}
+		clusterVolumes := cluster.Volumes
 
 		for _, volume := range clusterVolumes {
 			c.logger.Infof("found volume: name: %q - ID: %q", volume.Name, volume.ID)
@@ -47,7 +45,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 			if c.nuke {
 				c.logger.Infof("deleting volume %q for cluster %q", volume.Name, cluster.Name)
 
-				if _, err := c.client.DeleteVolume(volume.ID); err != nil {
+				if err := c.client.DeleteVolume(context.Background(), volume.ID); err != nil {
 					return fmt.Errorf("unable to delete cluster %q volume %q: %w", cluster.Name, volume.Name, err)
 				}
 
@@ -60,7 +58,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 		if c.nuke {
 			c.logger.Infof("deleting cluster %q", cluster.Name)
 
-			if _, err := c.client.DeleteKubernetesCluster(cluster.ID); err != nil {
+			if err := c.client.DeleteKubernetesCluster(context.Background(), cluster.ID); err != nil {
 				return fmt.Errorf("unable to delete cluster %q: %w", cluster.Name, err)
 			}
 
@@ -69,9 +67,9 @@ func (c *Civo) NukeKubernetesClusters() error {
 			c.logger.Warnf("refusing to delete cluster %q: nuke is not enabled", cluster.Name)
 		}
 
-		network, err := c.client.FindNetwork(cluster.ID)
+		network, err := c.client.GetNetwork(context.Background(), cluster.NetworkID)
 		if err != nil {
-			if errors.Is(err, civogo.ZeroMatchesError) {
+			if errors.Is(err, civov2.ErrNotFound) {
 				c.logger.Warnf("no network found for cluster %q", cluster.Name)
 				continue
 			}
@@ -87,7 +85,7 @@ func (c *Civo) NukeKubernetesClusters() error {
 		if c.nuke {
 			c.logger.Infof("deleting network %q", network.Name)
 
-			if _, err := c.client.DeleteNetwork(network.ID); err != nil {
+			if err := c.client.DeleteNetwork(context.Background(), network.ID); err != nil {
 				return fmt.Errorf("unable to delete cluster network %q: %w", cluster.Name, err)
 			}
 

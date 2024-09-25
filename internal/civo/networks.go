@@ -2,6 +2,7 @@
 package civo
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/konstructio/dropkick/internal/compare"
@@ -13,7 +14,7 @@ import (
 func (c *Civo) NukeNetworks() error {
 	c.logger.Infof("listing networks")
 
-	networks, err := c.client.ListNetworks()
+	networks, err := c.client.GetAllNetworks(context.Background())
 	if err != nil {
 		return fmt.Errorf("unable to list networks: %w", err)
 	}
@@ -31,7 +32,7 @@ func (c *Civo) NukeNetworks() error {
 		if c.nuke {
 			c.logger.Infof("deleting network %q", network.Name)
 
-			if _, err := c.client.DeleteNetwork(network.ID); err != nil {
+			if err := c.client.DeleteNetwork(context.Background(), network.ID); err != nil {
 				return fmt.Errorf("unable to delete network %q: %w", network.Name, err)
 			}
 

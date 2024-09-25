@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/civov2"
 	"github.com/konstructio/dropkick/internal/logger"
 )
 
@@ -13,7 +13,7 @@ const civoAPIURL = "https://api.civo.com"
 
 // Civo is a client for the Civo API.
 type Civo struct {
-	client     client          // The underlying Civo API client.
+	client     *civov2.Client  // The underlying Civo API client.
 	context    context.Context // The context for API requests.
 	nuke       bool            // Whether to nuke resources.
 	region     string          // The region for API requests.
@@ -82,32 +82,6 @@ func WithAPIURL(apiURL string) Option {
 	}
 }
 
-// client is an interface for the Civo API client.
-//
-//nolint:interfacebloat // the Civo API client has many methods
-type client interface {
-	ListInstances(page int, perPage int) (*civogo.PaginatedInstanceList, error)
-	ListSSHKeys() ([]civogo.SSHKey, error)
-	DeleteSSHKey(id string) (*civogo.SimpleResponse, error)
-	ListVolumes() ([]civogo.Volume, error)
-	DeleteVolume(id string) (*civogo.SimpleResponse, error)
-	ListKubernetesClusters() (*civogo.PaginatedKubernetesClusters, error)
-	DeleteKubernetesCluster(id string) (*civogo.SimpleResponse, error)
-	ListVolumesForCluster(clusterID string) ([]civogo.Volume, error)
-	ListNetworks() ([]civogo.Network, error)
-	FindNetwork(search string) (*civogo.Network, error)
-	DeleteNetwork(id string) (*civogo.SimpleResponse, error)
-	ListFirewalls() ([]civogo.Firewall, error)
-	DeleteFirewall(id string) (*civogo.SimpleResponse, error)
-	ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error)
-	GetObjectStoreCredential(id string) (*civogo.ObjectStoreCredential, error)
-	DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error)
-	ListObjectStores() (*civogo.PaginatedObjectstores, error)
-	DeleteObjectStore(id string) (*civogo.SimpleResponse, error)
-}
-
-var _ client = &civogo.Client{}
-
 type customLogger interface {
 	Errorf(format string, v ...interface{})
 	Infof(format string, v ...interface{})
@@ -147,12 +121,16 @@ func New(opts ...Option) (*Civo, error) {
 		c.logger = logger.None
 	}
 
-	civoClient, err := civogo.NewClientWithURL(c.token, c.apiURL, c.region)
+	client, err := civov2.New(
+		civov2.WithLogger(c.logger),
+		civov2.WithRegion(c.region),
+		civov2.WithJSONClient(nil, c.apiURL, c.token),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create new client: %w", err)
+		return nil, fmt.Errorf("unable to create Civo client: %w", err)
 	}
 
-	c.client = civoClient
+	c.client = client
 
 	return c, nil
 }

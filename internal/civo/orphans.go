@@ -1,9 +1,10 @@
 package civo
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/civov2"
 )
 
 // NukeOrphanedResources deletes all subresources not in use by a compute
@@ -93,31 +94,31 @@ func (c *Civo) NukeOrphanedResources() error {
 // store credentials and compares them against each other. If a credential is
 // not used by any store, it is considered orphaned. It returns an error if the
 // fetching process encounters any issues.
-func (c *Civo) getOrphanedObjectStoreCredentials() ([]civogo.ObjectStoreCredential, error) {
+func (c *Civo) getOrphanedObjectStoreCredentials() ([]civov2.ObjectStoreCredential, error) {
 	c.logger.Infof("listing object stores")
 
-	objectStores, err := c.client.ListObjectStores()
+	objectStores, err := c.client.GetAllObjectStores(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to list object stores: %w", err)
 	}
 
-	c.logger.Infof("found %d object stores", len(objectStores.Items))
+	c.logger.Infof("found %d object stores", len(objectStores))
 
-	credentials, err := c.client.ListObjectStoreCredentials()
+	credentials, err := c.client.GetAllObjectStoreCredentials(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to list object store credentials: %w", err)
 	}
 
-	c.logger.Infof("found %d object store credentials", len(credentials.Items))
+	c.logger.Infof("found %d object store credentials", len(credentials))
 
 	// iterate over all object stores and check if they are associated with any credentials
-	orphanedCredentials := make([]civogo.ObjectStoreCredential, 0)
-	for _, credential := range credentials.Items {
+	orphanedCredentials := make([]civov2.ObjectStoreCredential, 0)
+	for _, credential := range credentials {
 		var found bool
 
 		// iterate through the object stores finding if they use the current credential
-		for _, objectStore := range objectStores.Items {
-			if objectStore.OwnerInfo.CredentialID == credential.ID {
+		for _, objectStore := range objectStores {
+			if objectStore.Credentials.ID == credential.ID {
 				found = true
 				break
 			}
@@ -135,7 +136,7 @@ func (c *Civo) getOrphanedObjectStoreCredentials() ([]civogo.ObjectStoreCredenti
 // deleteObjectStoreCredentials deletes all object store credentials in the
 // provided list. It returns an error if the deletion process encounters any
 // issues.
-func (c *Civo) deleteObjectStoreCredentials(credentials []civogo.ObjectStoreCredential) error {
+func (c *Civo) deleteObjectStoreCredentials(credentials []civov2.ObjectStoreCredential) error {
 	for _, credential := range credentials {
 		if !c.nuke {
 			c.logger.Warnf("refusing to delete object store credential %q: nuke is not enabled", credential.Name)
@@ -144,7 +145,7 @@ func (c *Civo) deleteObjectStoreCredentials(credentials []civogo.ObjectStoreCred
 
 		c.logger.Infof("deleting object store credential %q", credential.Name)
 
-		if _, err := c.client.DeleteObjectStoreCredential(credential.ID); err != nil {
+		if err := c.client.DeleteObjectStoreCredential(context.Background(), credential.ID); err != nil {
 			return fmt.Errorf("unable to delete object store credential %s: %w", credential.Name, err)
 		}
 
@@ -156,7 +157,7 @@ func (c *Civo) deleteObjectStoreCredentials(credentials []civogo.ObjectStoreCred
 
 // deleteVolumes deletes all volumes in the provided list. It returns an error
 // if the deletion process encounters any issues.
-func (c *Civo) deleteVolumes(volumes []civogo.Volume) error {
+func (c *Civo) deleteVolumes(volumes []civov2.Volume) error {
 	for _, volume := range volumes {
 		if !c.nuke {
 			c.logger.Warnf("refusing to delete volume %q: nuke is not enabled", volume.Name)
@@ -165,7 +166,7 @@ func (c *Civo) deleteVolumes(volumes []civogo.Volume) error {
 
 		c.logger.Infof("deleting volume %q", volume.Name)
 
-		if _, err := c.client.DeleteVolume(volume.ID); err != nil {
+		if err := c.client.DeleteVolume(context.Background(), volume.ID); err != nil {
 			return fmt.Errorf("unable to delete volume %q: %w", volume.Name, err)
 		}
 
@@ -177,7 +178,7 @@ func (c *Civo) deleteVolumes(volumes []civogo.Volume) error {
 
 // deleteSSHKeys deletes all SSH keys in the provided list. It returns an error
 // if the deletion process encounters any issues.
-func (c *Civo) deleteSSHKeys(keys []civogo.SSHKey) error {
+func (c *Civo) deleteSSHKeys(keys []civov2.SSHKey) error {
 	for _, key := range keys {
 		if !c.nuke {
 			c.logger.Warnf("refusing to delete SSH key %q: nuke is not enabled", key.Name)
@@ -186,7 +187,7 @@ func (c *Civo) deleteSSHKeys(keys []civogo.SSHKey) error {
 
 		c.logger.Infof("deleting SSH key %q", key.Name)
 
-		if _, err := c.client.DeleteSSHKey(key.ID); err != nil {
+		if err := c.client.DeleteSSHKey(context.Background(), key.ID); err != nil {
 			return fmt.Errorf("unable to delete SSH key %q: %w", key.Name, err)
 		}
 
@@ -198,7 +199,7 @@ func (c *Civo) deleteSSHKeys(keys []civogo.SSHKey) error {
 
 // deleteNetworks deletes all networks in the provided list. It returns an error
 // if the deletion process encounters any issues.
-func (c *Civo) deleteNetworks(networks []civogo.Network) error {
+func (c *Civo) deleteNetworks(networks []civov2.Network) error {
 	for _, network := range networks {
 		if !c.nuke {
 			c.logger.Warnf("refusing to delete network %q: nuke is not enabled", network.Name)
@@ -207,7 +208,7 @@ func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 
 		c.logger.Infof("deleting network %q", network.Name)
 
-		if _, err := c.client.DeleteNetwork(network.ID); err != nil {
+		if err := c.client.DeleteNetwork(context.Background(), network.ID); err != nil {
 			return fmt.Errorf("unable to delete network %s: %w", network.Name, err)
 		}
 
@@ -219,7 +220,7 @@ func (c *Civo) deleteNetworks(networks []civogo.Network) error {
 
 // deleteFirewalls deletes all firewalls in the provided list. It returns an error
 // if the deletion process encounters any issues.
-func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
+func (c *Civo) deleteFirewalls(firewalls []civov2.Firewall) error {
 	for _, firewall := range firewalls {
 		if !c.nuke {
 			c.logger.Warnf("refusing to delete firewall %q: nuke is not enabled", firewall.Name)
@@ -228,7 +229,7 @@ func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
 
 		c.logger.Infof("deleting firewall %q", firewall.Name)
 
-		_, err := c.client.DeleteFirewall(firewall.ID)
+		err := c.client.DeleteFirewall(context.Background(), firewall.ID)
 		if err != nil {
 			return fmt.Errorf("unable to delete firewall %q: %w", firewall.Name, err)
 		}
@@ -243,24 +244,12 @@ func (c *Civo) deleteFirewalls(firewalls []*civogo.Firewall) error {
 // paginated, this function will fetch all pages of nodes and return them as a
 // single list. It returns an error if the fetching process encounters any
 // issues.
-func (c *Civo) getAllNodes() ([]civogo.Instance, error) {
-	var nodes []civogo.Instance
+func (c *Civo) getAllNodes() ([]civov2.Instance, error) {
+	c.logger.Infof("listing nodes")
 
-	perPage := 100
-	for page := 1; ; page++ {
-		c.logger.Infof("listing page %d of nodes", page)
-
-		nodesPage, err := c.client.ListInstances(page, perPage)
-		if err != nil {
-			return nil, fmt.Errorf("unable to list nodes: %w", err)
-		}
-
-		c.logger.Infof("found %d nodes on page %d", len(nodesPage.Items), page)
-		nodes = append(nodes, nodesPage.Items...)
-
-		if nodesPage.Pages == page {
-			break
-		}
+	nodes, err := c.client.GetAllInstances(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("unable to list nodes: %w", err)
 	}
 
 	c.logger.Infof("found %d nodes on all pages", len(nodes))
@@ -270,15 +259,16 @@ func (c *Civo) getAllNodes() ([]civogo.Instance, error) {
 // getOrphanedVolumes fetches all volumes that are not attached to any node
 // instance instead of relying if they are referenced by a node instance. It
 // returns an error if the fetching process encounters any issues.
-func (c *Civo) getOrphanedVolumes() ([]civogo.Volume, error) {
+func (c *Civo) getOrphanedVolumes() ([]civov2.Volume, error) {
 	c.logger.Infof("listing volumes")
 
-	volumes, err := c.client.ListVolumes()
+	volumes, err := c.client.GetAllVolumes(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to list volumes: %w", err)
 	}
 
-	newVolumeList := make([]civogo.Volume, 0, len(volumes))
+	newVolumeList := make([]civov2.Volume, 0, len(volumes))
+
 	for _, volume := range volumes {
 		if volume.Status == volumeStatusAttached {
 			c.logger.Warnf("skipping volume %q: it is attached to the node instance with ID %q", volume.Name, volume.InstanceID)
@@ -295,12 +285,10 @@ func (c *Civo) getOrphanedVolumes() ([]civogo.Volume, error) {
 // getOrphanedSSHKeys fetches all SSH keys then compares them against the
 // provided list of nodes to determine if they are associated with any of
 // them. It returns an error if the fetching process encounters any issues.
-func (c *Civo) getOrphanedSSHKeys(nodes []civogo.Instance) ([]civogo.SSHKey, error) {
-	var keys []civogo.SSHKey
-
+func (c *Civo) getOrphanedSSHKeys(nodes []civov2.Instance) ([]civov2.SSHKey, error) {
 	c.logger.Infof("listing SSH keys")
 
-	keys, err := c.client.ListSSHKeys()
+	keys, err := c.client.GetAllSSHKeys(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to list SSH keys: %w", err)
 	}
@@ -308,7 +296,7 @@ func (c *Civo) getOrphanedSSHKeys(nodes []civogo.Instance) ([]civogo.SSHKey, err
 	c.logger.Infof("found %d SSH keys", len(keys))
 
 	// iterate over all keys and check if they are associated with any nodes
-	orphanedKeys := make([]civogo.SSHKey, 0, len(keys))
+	orphanedKeys := make([]civov2.SSHKey, 0, len(keys))
 	for _, key := range keys {
 		var found bool
 
@@ -332,10 +320,10 @@ func (c *Civo) getOrphanedSSHKeys(nodes []civogo.Instance) ([]civogo.SSHKey, err
 // getOrphanedNetworks fetches all networks then compares them against the
 // provided list of nodes to determine if they are associated with any of
 // them. It returns an error if the fetching process encounters any issues.
-func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance) ([]civogo.Network, error) {
+func (c *Civo) getOrphanedNetworks(nodes []civov2.Instance) ([]civov2.Network, error) {
 	c.logger.Infof("listing networks")
 
-	networks, err := c.client.ListNetworks()
+	networks, err := c.client.GetAllNetworks(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to list networks: %w", err)
 	}
@@ -343,7 +331,7 @@ func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance) ([]civogo.Network, e
 	c.logger.Infof("found %d networks", len(networks))
 
 	// iterate over all networks and check if they are associated with any nodes
-	orphanedNetworks := make([]civogo.Network, 0, len(networks))
+	orphanedNetworks := make([]civov2.Network, 0, len(networks))
 	for _, network := range networks {
 		var found bool
 
@@ -367,10 +355,10 @@ func (c *Civo) getOrphanedNetworks(nodes []civogo.Instance) ([]civogo.Network, e
 // getOrphanedFirewalls fetches all firewalls then checks if they are associated
 // with any node instance, cluster, or load balancer. It returns an error if the
 // fetching process encounters any issues.
-func (c *Civo) getOrphanedFirewalls() ([]*civogo.Firewall, error) {
+func (c *Civo) getOrphanedFirewalls() ([]civov2.Firewall, error) {
 	c.logger.Infof("listing firewalls")
 
-	firewalls, err := c.client.ListFirewalls()
+	firewalls, err := c.client.GetAllFirewalls(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to list firewalls: %w", err)
 	}
@@ -378,7 +366,7 @@ func (c *Civo) getOrphanedFirewalls() ([]*civogo.Firewall, error) {
 	c.logger.Infof("found %d firewalls", len(firewalls))
 
 	// iterate over all firewalls and check if they are associated with any nodes
-	orphanedFirewalls := make([]*civogo.Firewall, 0, len(firewalls))
+	orphanedFirewalls := make([]civov2.Firewall, 0, len(firewalls))
 	for _, firewall := range firewalls {
 		if firewall.ClusterCount > 0 || firewall.InstanceCount > 0 || firewall.LoadBalancerCount > 0 {
 			c.logger.Warnf(
@@ -389,7 +377,7 @@ func (c *Civo) getOrphanedFirewalls() ([]*civogo.Firewall, error) {
 		}
 
 		c.logger.Infof("found orphaned firewall %q - ID: %q", firewall.Name, firewall.ID)
-		orphanedFirewalls = append(orphanedFirewalls, &firewall)
+		orphanedFirewalls = append(orphanedFirewalls, firewall)
 	}
 
 	return orphanedFirewalls, nil

@@ -11,10 +11,8 @@ type customLogger interface {
 
 // Client is a Civo client.
 type Client struct {
-	region     string
-	namefilter string
-	nuke       bool
-	logger     customLogger
+	region string
+	logger customLogger
 
 	client    *http.Client
 	requester *civoJSONClient
@@ -38,22 +36,6 @@ func WithLogger(logger customLogger) Option {
 func WithJSONClient(client *http.Client, endpoint, bearerToken string) Option {
 	return func(c *Client) error {
 		c.requester = newCivoJSONClient(client, endpoint, bearerToken)
-		return nil
-	}
-}
-
-// WithNameFilter is an option to set the name filter.
-func WithNameFilter(nameFilter string) Option {
-	return func(c *Client) error {
-		c.namefilter = nameFilter
-		return nil
-	}
-}
-
-// WithNuke is an option to set the nuke flag.
-func WithNuke(nuke bool) Option {
-	return func(c *Client) error {
-		c.nuke = nuke
 		return nil
 	}
 }
