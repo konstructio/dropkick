@@ -1,6 +1,7 @@
 package civov2
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -38,7 +39,8 @@ func (j *civoJSONClient) getClient() *http.Client {
 // error messages. This is used to standardize the error messages returned
 // by the Civo API.
 var knownCodes = map[string]string{
-	"database_account_not_found": "authentication failed: invalid token",
+	"database_account_not_found":         "authentication failed: invalid token",
+	"database_network_inuse_by_instance": "the network is in use by an instance",
 }
 
 // CivoError is an error returned by the Civo API.
@@ -64,12 +66,19 @@ func (e *CivoError) Is(target error) bool {
 // HTTPError is an error returned when an unexpected HTTP status code is
 // returned by the Civo API.
 type HTTPError struct {
-	Code int
+	Code     int
+	Contents string
 }
 
 // Error returns the error message for the HTTPError.
 func (e *HTTPError) Error() string {
-	return fmt.Sprintf("unexpected status code: \"%d %s\"", e.Code, http.StatusText(e.Code))
+	msg := fmt.Sprintf("unexpected status code: \"%d %s\"", e.Code, http.StatusText(e.Code))
+
+	if e.Contents != "" {
+		return fmt.Sprintf("%s: %s", msg, e.Contents)
+	}
+
+	return msg
 }
 
 // Is checks if the target error is an HTTPError with the same code.
@@ -106,26 +115,32 @@ func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, ou
 	defer res.Body.Close()
 
 	switch res.StatusCode {
-	case http.StatusOK, http.StatusAccepted, http.StatusNotFound:
-		// do nothing, we successfully got the data
-		// for not found, we need to check the code in the response
+	// Successful cases where we expect the body to have what's supposed
+	// to be returned.
+	case http.StatusOK, http.StatusAccepted:
+		// Do nothing
+
+	// Civo treats 404 as a special case for authentication failure
+	// by returning a specific error code "database_account_not_found".
+	// For conflicts (like attempting to delete a network in use by a node)
+	// Civo returns a 409 status code, but the response body is still JSON.
+	case http.StatusNotFound, http.StatusConflict:
+		var resp CivoError
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			var buf bytes.Buffer
+			buf.ReadFrom(res.Body)
+
+			return &HTTPError{Code: res.StatusCode, Contents: buf.String()}
+		}
+		return &resp
 
 	case http.StatusUnauthorized:
 		// Standardize the error message for authentication failure
 		return &CivoError{Code: "database_account_not_found"}
 	default:
-		return &HTTPError{Code: res.StatusCode}
-	}
-
-	// Civo treats 404 as a special case for authentication failure
-	// by returning a specific error code "database_account_not_found"
-	// so we need to check for that.
-	if res.StatusCode == http.StatusNotFound {
-		var resp CivoError
-		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
-			return &HTTPError{Code: res.StatusCode}
-		}
-		return &resp
+		var buf bytes.Buffer
+		buf.ReadFrom(res.Body)
+		return &HTTPError{Code: res.StatusCode, Contents: buf.String()}
 	}
 
 	if output != nil {
