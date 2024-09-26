@@ -9,6 +9,8 @@ import (
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
+// NukeEverything deletes all resources associated with the Civo account it's
+// targeting in the given Civo region.
 func (c *Civo) NukeEverything() error {
 	// The order in which these resources are deleted matter. We start with those
 	// resources that have dependencies. In Civo, certain resources won't delete

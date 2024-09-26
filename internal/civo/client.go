@@ -148,7 +148,6 @@ func New(opts ...Option) (*Civo, error) {
 	}
 
 	client, err := sdk.New(
-		sdk.WithLogger(c.logger),
 		sdk.WithRegion(c.region),
 		sdk.WithJSONClient(debuggableHTTPClient, c.apiURL, c.token),
 	)

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -29,7 +30,7 @@ func getCivoCommand() *cobra.Command {
 		Long:  `clean civo resources`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.quiet = cmd.Flags().Lookup("quiet").Value.String() == "true"
-			return runCivo(cmd.OutOrStderr(), opts, os.Getenv("CIVO_TOKEN"))
+			return runCivo(cmd.Context(), cmd.OutOrStderr(), opts, os.Getenv("CIVO_TOKEN"))
 		},
 	}
 
@@ -45,7 +46,7 @@ func getCivoCommand() *cobra.Command {
 	return civoCmd
 }
 
-func runCivo(output io.Writer, opts civoOptions, token string) error {
+func runCivo(ctx context.Context, output io.Writer, opts civoOptions, token string) error {
 	if token == "" {
 		return errors.New("required environment variable $CIVO_TOKEN not found: get one at https://dashboard.civo.com/security")
 	}
@@ -59,6 +60,7 @@ func runCivo(output io.Writer, opts civoOptions, token string) error {
 	}
 
 	client, err := civo.New(
+		civo.WithContext(ctx),
 		civo.WithToken(token),
 		civo.WithRegion(opts.region),
 		civo.WithNameFilter(opts.nameFilter),

@@ -7,13 +7,6 @@ import (
 	"github.com/konstructio/dropkick/internal/civo/sdk/json"
 )
 
-// customLogger is an interface that allows us to log messages.
-type customLogger interface {
-	Errorf(format string, v ...interface{})
-	Infof(format string, v ...interface{})
-	Warnf(format string, v ...interface{})
-}
-
 // JSONClient is an interface that allows us to make requests to the Civo API.
 type JSONClient interface {
 	Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error
@@ -22,7 +15,6 @@ type JSONClient interface {
 // Client is a Civo client.
 type Client struct {
 	region string
-	logger customLogger
 
 	client    *http.Client
 	requester JSONClient
@@ -30,14 +22,6 @@ type Client struct {
 
 // Option is a functional option for the Client.
 type Option func(*Client) error
-
-// WithLogger is an option to set a custom logger.
-func WithLogger(logger customLogger) Option {
-	return func(c *Client) error {
-		c.logger = logger
-		return nil
-	}
-}
 
 // WithJSONClient is an option to set a custom JSON client.
 // The client can be nil, in which case http.DefaultClient will be used.
