@@ -42,11 +42,7 @@ func (c *Civo) NukeOrphanedResources() error {
 	}
 
 	// fetch orphaned volumes
-	orphanedVolumes, err := c.getOrphanedVolumes(volumes)
-	if err != nil {
-		return fmt.Errorf("unable to fetch orphaned volumes: %w", err)
-	}
-
+	orphanedVolumes := c.getOrphanedVolumes(volumes)
 	if err := nukeSlice(context.Background(), c, orphanedVolumes); err != nil {
 		return fmt.Errorf("unable to delete orphaned volumes: %w", err)
 	}
@@ -169,7 +165,7 @@ func (c *Civo) getOrphanedLoadBalancers() ([]sdk.LoadBalancer, error) {
 // getOrphanedVolumes fetches all volumes that are not attached to any node
 // instance instead of relying if they are referenced by a node instance. It
 // returns an error if the fetching process encounters any issues.
-func (c *Civo) getOrphanedVolumes(volumes []sdk.Volume) ([]sdk.Volume, error) {
+func (c *Civo) getOrphanedVolumes(volumes []sdk.Volume) []sdk.Volume {
 	newVolumeList := make([]sdk.Volume, 0, len(volumes))
 
 	for _, volume := range volumes {
@@ -183,7 +179,7 @@ func (c *Civo) getOrphanedVolumes(volumes []sdk.Volume) ([]sdk.Volume, error) {
 	}
 
 	c.logger.Infof("found %d volumes, %d of which are orphaned", len(volumes), len(newVolumeList))
-	return newVolumeList, nil
+	return newVolumeList
 }
 
 // getOrphanedSSHKeys fetches all SSH keys then compares them against the

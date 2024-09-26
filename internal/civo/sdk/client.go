@@ -80,5 +80,5 @@ func (c *Client) GetRegion() string {
 
 // Do wraps the underlying JSONClient's Do method.
 func (c *Client) Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
-	return c.requester.Do(ctx, location, method, output, params)
+	return c.requester.Do(ctx, location, method, output, params) //nolint:wrapcheck // we control the downstream error too
 }
