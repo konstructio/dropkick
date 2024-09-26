@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
 
-	"github.com/konstructio/dropkick/internal/civov2"
+	"github.com/konstructio/dropkick/internal/civo/sdk"
 	"github.com/konstructio/dropkick/internal/logger"
 )
 
@@ -15,7 +17,7 @@ const civoAPIURL = "https://api.civo.com"
 
 // Civo is a client for the Civo API.
 type Civo struct {
-	client     *civov2.Client  // The underlying Civo API client.
+	client     *sdk.Client     // The underlying Civo API client.
 	context    context.Context // The context for API requests.
 	nuke       bool            // Whether to nuke resources.
 	region     string          // The region for API requests.
@@ -79,7 +81,12 @@ func WithNameFilter(nameFilter string) Option {
 // WithAPIURL sets the API URL for a Civo.
 func WithAPIURL(apiURL string) Option {
 	return func(c *Civo) error {
-		c.apiURL = apiURL
+		u, err := url.Parse(apiURL)
+		if err != nil {
+			return fmt.Errorf("invalid API URL: %w", err)
+		}
+
+		c.apiURL = u.String()
 		return nil
 	}
 }
@@ -94,7 +101,11 @@ var _ customLogger = &logger.Logger{}
 
 var debuggableHTTPClient = &http.Client{
 	Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		log.Printf(">>> %s: %s", req.Method, req.URL)
+		if os.Getenv("HTTP_DEBUG") == "" {
+			return http.DefaultTransport.RoundTrip(req)
+		}
+
+		log.Printf("Request: %s %s", req.Method, req.URL.String())
 		return http.DefaultTransport.RoundTrip(req)
 	}),
 }
@@ -136,10 +147,10 @@ func New(opts ...Option) (*Civo, error) {
 		c.logger = logger.None
 	}
 
-	client, err := civov2.New(
-		civov2.WithLogger(c.logger),
-		civov2.WithRegion(c.region),
-		civov2.WithJSONClient(debuggableHTTPClient, c.apiURL, c.token),
+	client, err := sdk.New(
+		sdk.WithLogger(c.logger),
+		sdk.WithRegion(c.region),
+		sdk.WithJSONClient(debuggableHTTPClient, c.apiURL, c.token),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create Civo client: %w", err)

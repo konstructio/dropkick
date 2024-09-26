@@ -1,6 +1,11 @@
-package civov2
+package sdk
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+
+	"github.com/konstructio/dropkick/internal/civo/sdk/json"
+)
 
 // customLogger is an interface that allows us to log messages.
 type customLogger interface {
@@ -9,13 +14,18 @@ type customLogger interface {
 	Warnf(format string, v ...interface{})
 }
 
+// JSONClient is an interface that allows us to make requests to the Civo API.
+type JSONClient interface {
+	Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error
+}
+
 // Client is a Civo client.
 type Client struct {
 	region string
 	logger customLogger
 
 	client    *http.Client
-	requester *civoJSONClient
+	requester JSONClient
 }
 
 // Option is a functional option for the Client.
@@ -35,7 +45,7 @@ func WithLogger(logger customLogger) Option {
 // The bearerToken is the token to authenticate with the Civo API.
 func WithJSONClient(client *http.Client, endpoint, bearerToken string) Option {
 	return func(c *Client) error {
-		c.requester = newCivoJSONClient(client, endpoint, bearerToken)
+		c.requester = json.New(client, endpoint, bearerToken)
 		return nil
 	}
 }
@@ -61,4 +71,14 @@ func New(opts ...Option) (*Client, error) {
 	}
 
 	return c, nil
+}
+
+// GetRegion returns the region of the client.
+func (c *Client) GetRegion() string {
+	return c.region
+}
+
+// Do wraps the underlying JSONClient's Do method.
+func (c *Client) Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
+	return c.requester.Do(ctx, location, method, output, params)
 }

@@ -151,9 +151,6 @@ func TestNew(t *testing.T) {
 				tt.Fatalf("expected client.context to be %v, got %v", tc.Context, client.context)
 			}
 
-			t.Logf("client.logger: %#v", client.logger)
-			t.Logf("tc.Logger: %#v", tc.Logger)
-
 			if tc.Logger == nil && client.logger != logger.None {
 				tt.Fatalf("expected client.logger to be the default logger, got: %#v", client.logger)
 			}

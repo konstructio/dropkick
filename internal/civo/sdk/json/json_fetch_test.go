@@ -1,4 +1,4 @@
-package civov2
+package json
 
 import (
 	"context"
@@ -16,6 +16,22 @@ func createServer(t *testing.T, method, path string, handler http.HandlerFunc) *
 	mux.HandleFunc(fmt.Sprintf("%s %s", method, path), handler)
 
 	return httptest.NewServer(mux)
+}
+
+func Test_httpError(t *testing.T) {
+	t.Run("http error must be of type error", func(t *testing.T) {
+		var e error = &HTTPError{}
+		_ = e.Error()
+	})
+
+	t.Run("http error must be comparable based just on status code", func(t *testing.T) {
+		var a error = &HTTPError{Code: http.StatusTeapot, Contents: "ABC"}
+		var b error = &HTTPError{Code: http.StatusTeapot, Contents: "XYZ"}
+
+		if !errors.Is(a, b) {
+			t.Fatalf("expecting errors to be the same")
+		}
+	})
 }
 
 func Test_civoError(t *testing.T) {
@@ -64,13 +80,13 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, token)
+		client := New(nil, srv.URL, token)
 
 		var output struct {
 			Name string `json:"name"`
 		}
 
-		if err := client.doCivo(context.Background(), "/users/me", http.MethodGet, &output, nil); err != nil {
+		if err := client.Do(context.Background(), "/users/me", http.MethodGet, &output, nil); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -98,7 +114,7 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, token)
+		client := New(nil, srv.URL, token)
 
 		var output struct {
 			Name string `json:"name"`
@@ -108,7 +124,7 @@ func Test_jsonClient_get(t *testing.T) {
 			"name": "test",
 		}
 
-		if err := client.doCivo(context.Background(), "/users/me", http.MethodGet, &output, params); err != nil {
+		if err := client.Do(context.Background(), "/users/me", http.MethodGet, &output, params); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -125,9 +141,9 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, "")
+		client := New(nil, srv.URL, "")
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
@@ -141,27 +157,46 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, "")
+		client := New(nil, srv.URL, "")
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		t.Logf("error: %v", err)
+		if err == nil {
+			t.Fatalf("expecting an error, got nil")
+		}
+	})
+
+	t.Run("unexpected status code including body", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusTeapot)
+			fmt.Fprint(w, "I'm a teapot")
+		}
+
+		srv := createServer(t, http.MethodGet, "/users/me", handler)
+		defer srv.Close()
+
+		client := New(nil, srv.URL, "")
+
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		t.Logf("error: %v", err)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
 	})
 
 	t.Run("unable to parse requested url", func(t *testing.T) {
-		client := newCivoJSONClient(nil, ":", "")
+		client := New(nil, ":", "")
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
 	})
 
 	t.Run("unable to create request", func(t *testing.T) {
-		client := newCivoJSONClient(nil, "https://example.com", "")
+		client := New(nil, "https://example.com", "")
 
-		err := client.doCivo(context.Background(), "/users/me", "GE\nT", http.MethodGet, nil)
+		err := client.Do(context.Background(), "/users/me", "GE\nT", http.MethodGet, nil)
 		t.Logf("error: %v", err)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
@@ -174,9 +209,9 @@ func Test_jsonClient_get(t *testing.T) {
 		}))
 		srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, "")
+		client := New(nil, srv.URL, "")
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
@@ -191,13 +226,13 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, "")
+		client := New(nil, srv.URL, "")
 
 		var output struct {
 			Name string `json:"name"`
 		}
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, &output, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, &output, nil)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
@@ -213,9 +248,9 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, "")
+		client := New(nil, srv.URL, "")
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
@@ -235,9 +270,9 @@ func Test_jsonClient_get(t *testing.T) {
 		srv := createServer(t, http.MethodGet, "/users/me", handler)
 		defer srv.Close()
 
-		client := newCivoJSONClient(nil, srv.URL, "")
+		client := New(nil, srv.URL, "")
 
-		err := client.doCivo(context.Background(), "/users/me", http.MethodGet, nil, nil)
+		err := client.Do(context.Background(), "/users/me", http.MethodGet, nil, nil)
 		if err == nil {
 			t.Fatalf("expecting an error, got nil")
 		}
@@ -247,7 +282,7 @@ func Test_jsonClient_get(t *testing.T) {
 func Test_getClient(t *testing.T) {
 	t.Run("return custom client", func(t *testing.T) {
 		client := &http.Client{}
-		jsonClient := newCivoJSONClient(client, "", "")
+		jsonClient := New(client, "", "")
 
 		if got, want := jsonClient.getClient(), client; got != want {
 			t.Fatalf("expecting client to be %v, got %v", want, got)
@@ -255,7 +290,7 @@ func Test_getClient(t *testing.T) {
 	})
 
 	t.Run("return default client", func(t *testing.T) {
-		jsonClient := newCivoJSONClient(nil, "", "")
+		jsonClient := New(nil, "", "")
 
 		if got, want := jsonClient.getClient(), http.DefaultClient; got != want {
 			t.Fatalf("expecting client to be %v, got %v", want, got)

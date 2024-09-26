@@ -36,11 +36,7 @@ func getCivoCommand() *cobra.Command {
 	civoCmd.Flags().BoolVar(&opts.nuke, "nuke", false, "required to confirm deletion of resources")
 	civoCmd.Flags().StringVar(&opts.region, "region", "", "the civo region to clean")
 	civoCmd.Flags().StringVar(&opts.nameFilter, "name-contains", "", "if set, only resources with a name containing this string will be selected")
-	civoCmd.Flags().BoolVar(&opts.onlyOrphans, "orphans-only", false, "only delete orphaned resources (only volumes, object store credentials, SSH keys, networks and firewalls)")
-
-	// On orphaned resources, we don't want to filter by name since the
-	// filter is already that's just for the resources we want to delete
-	civoCmd.MarkFlagsMutuallyExclusive("name-contains", "orphans-only")
+	civoCmd.Flags().BoolVar(&opts.onlyOrphans, "orphans-only", false, "only delete orphaned resources (only load balancers, volumes, object store credentials, SSH keys, networks and firewalls)")
 
 	if err := civoCmd.MarkFlagRequired("region"); err != nil {
 		log.Fatal(err)
@@ -80,32 +76,12 @@ func runCivo(output io.Writer, opts civoOptions, token string) error {
 		return nil
 	}
 
-	if err := client.NukeKubernetesClusters(); err != nil {
-		return fmt.Errorf("unable to cleanup Kubernetes clusters: %w", err)
-	}
+	if err := client.NukeEverything(); err != nil {
+		if opts.nuke {
+			return fmt.Errorf("unable to nuke resources: %w", err)
+		}
 
-	if err := client.NukeObjectStores(); err != nil {
-		return fmt.Errorf("unable to cleanup object stores: %w", err)
-	}
-
-	if err := client.NukeObjectStoreCredentials(); err != nil {
-		return fmt.Errorf("unable to cleanup object store credentials: %w", err)
-	}
-
-	if err := client.NukeVolumes(); err != nil {
-		return fmt.Errorf("unable to cleanup volumes: %w", err)
-	}
-
-	if err := client.NukeNetworks(); err != nil {
-		return fmt.Errorf("unable to cleanup networks: %w", err)
-	}
-
-	if err := client.NukeSSHKeys(); err != nil {
-		return fmt.Errorf("unable to cleanup SSH keys: %w", err)
-	}
-
-	if err := client.NukeFirewalls(); err != nil {
-		return fmt.Errorf("unable to cleanup firewalls: %w", err)
+		return fmt.Errorf("unable to process resources: %w", err)
 	}
 
 	return nil

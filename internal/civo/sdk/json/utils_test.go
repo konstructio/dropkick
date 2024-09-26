@@ -1,4 +1,4 @@
-package civov2
+package json
 
 import "testing"
 

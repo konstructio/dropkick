@@ -1,4 +1,4 @@
-package civov2
+package json
 
 import (
 	"bytes"
@@ -9,16 +9,16 @@ import (
 	"net/url"
 )
 
-// civoJSONClient is a client that can make requests to the Civo API.
-type civoJSONClient struct {
+// Client is a client that can make requests to the Civo API.
+type Client struct {
 	endpoint    string
 	bearerToken string
 	client      *http.Client
 }
 
-// newCivoJSONClient creates a new civoJSONClient.
-func newCivoJSONClient(client *http.Client, endpoint, bearerToken string) *civoJSONClient {
-	return &civoJSONClient{
+// New creates a new civoJSONClient.
+func New(client *http.Client, endpoint, bearerToken string) *Client {
+	return &Client{
 		endpoint:    endpoint,
 		bearerToken: bearerToken,
 		client:      client,
@@ -28,7 +28,7 @@ func newCivoJSONClient(client *http.Client, endpoint, bearerToken string) *civoJ
 // getClient returns the http client to use for requests as configured
 // when creating the civoJSONClient, or the default Go http client if none
 // was provided.
-func (j *civoJSONClient) getClient() *http.Client {
+func (j *Client) getClient() *http.Client {
 	if j.client != nil {
 		return j.client
 	}
@@ -40,17 +40,22 @@ func (j *civoJSONClient) getClient() *http.Client {
 // by the Civo API.
 var knownCodes = map[string]string{
 	"database_account_not_found":         "authentication failed: invalid token",
-	"database_network_inuse_by_instance": "the network is in use by an instance",
+	"database_network_inuse_by_instance": "the network is in use",
 }
 
 // CivoError is an error returned by the Civo API.
 type CivoError struct {
-	Code string `json:"code"`
+	Code    string `json:"code"`
+	Details string `json:"details"`
 }
 
 // Error returns the error message for the CivoError.
 func (e *CivoError) Error() string {
 	if msg, ok := knownCodes[e.Code]; ok {
+		if e.Details != "" {
+			return fmt.Sprintf("%s: %s", msg, e.Details)
+		}
+
 		return msg
 	}
 
@@ -87,8 +92,8 @@ func (e *HTTPError) Is(target error) bool {
 	return ok && err.Code == e.Code
 }
 
-// doCivo makes a raw HTTP request to the Civo API.
-func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
+// Do makes a raw HTTP request to the Civo API.
+func (j *Client) Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
 	u, err := url.Parse(mergeHostPath(j.endpoint, location))
 	if err != nil {
 		return fmt.Errorf("unable to parse requested url: %w", err)
@@ -128,8 +133,7 @@ func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, ou
 		var resp CivoError
 		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
 			var buf bytes.Buffer
-			buf.ReadFrom(res.Body)
-
+			_, _ = buf.ReadFrom(res.Body) // ignoring error since we can handle it at the HTTPError level
 			return &HTTPError{Code: res.StatusCode, Contents: buf.String()}
 		}
 		return &resp
@@ -145,7 +149,9 @@ func (j *civoJSONClient) doCivo(ctx context.Context, location, method string, ou
 
 	if output != nil {
 		if err := json.NewDecoder(res.Body).Decode(&output); err != nil {
-			return fmt.Errorf("unable to decode response: %w", err)
+			var buf bytes.Buffer
+			buf.ReadFrom(res.Body)
+			return fmt.Errorf("unable to decode response: %s: %w", buf.String(), err)
 		}
 	}
 
