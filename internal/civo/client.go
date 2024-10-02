@@ -1,7 +1,6 @@
 package civo
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -17,14 +16,13 @@ const civoAPIURL = "https://api.civo.com"
 
 // Civo is a client for the Civo API.
 type Civo struct {
-	client     *sdk.Client     // The underlying Civo API client.
-	context    context.Context // The context for API requests.
-	nuke       bool            // Whether to nuke resources.
-	region     string          // The region for API requests.
-	nameFilter string          // If set, only resources with a name containing this string will be deleted.
-	token      string          // The API token.
-	logger     customLogger    // The logger instance.
-	apiURL     string          // The URL for the Civo API.
+	client     sdk.Civoer   // The underlying Civo API client.
+	nuke       bool         // Whether to nuke resources.
+	region     string       // The region for API requests.
+	nameFilter string       // If set, only resources with a name containing this string will be deleted.
+	token      string       // The API token.
+	logger     customLogger // The logger instance.
+	apiURL     string       // The URL for the Civo API.
 }
 
 // Option is a function that configures a Civo.
@@ -58,14 +56,6 @@ func WithRegion(region string) Option {
 func WithNuke(nuke bool) Option {
 	return func(c *Civo) error {
 		c.nuke = nuke
-		return nil
-	}
-}
-
-// WithContext sets the context for a Civo.
-func WithContext(ctx context.Context) Option {
-	return func(c *Civo) error {
-		c.context = ctx
 		return nil
 	}
 }
@@ -144,10 +134,6 @@ func New(opts ...Option) (*Civo, error) {
 
 	if c.apiURL == "" {
 		c.apiURL = civoAPIURL
-	}
-
-	if c.context == nil {
-		c.context = context.Background()
 	}
 
 	if c.logger == nil {

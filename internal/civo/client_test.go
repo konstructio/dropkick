@@ -91,10 +91,6 @@ func TestNew(t *testing.T) {
 				opts = append(opts, WithAPIURL(tc.APIURL))
 			}
 
-			if tc.Context != nil {
-				opts = append(opts, WithContext(tc.Context))
-			}
-
 			if tc.Logger != nil {
 				opts = append(opts, WithLogger(tc.Logger))
 			}
@@ -141,14 +137,6 @@ func TestNew(t *testing.T) {
 
 			if tc.APIURL != "" && client.apiURL != tc.APIURL {
 				tt.Fatalf("expected client.apiURL to be %q, got %q", tc.APIURL, client.apiURL)
-			}
-
-			if tc.Context == nil && client.context != context.Background() {
-				tt.Fatalf("expected client.context to be %v, got %v", context.Background(), client.context)
-			}
-
-			if tc.Context != nil && client.context != tc.Context {
-				tt.Fatalf("expected client.context to be %v, got %v", tc.Context, client.context)
 			}
 
 			if tc.Logger == nil && client.logger != logger.None {

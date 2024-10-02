@@ -7,7 +7,17 @@ import (
 	"github.com/konstructio/dropkick/internal/civo/sdk/json"
 )
 
+// Civoer is the interface that represents a high-level Civo client. It differs
+// from the JSONClient interface in that this is a higher-level abstraction that
+// is used to interact with the Civo API.
+type Civoer interface {
+	Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error
+	GetRegion() string
+}
+
 // JSONClient is an interface that allows us to make requests to the Civo API.
+// It's used to convey the low-level SDK client that can use generics to make
+// requests to the Civo API.
 type JSONClient interface {
 	Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error
 	GetClient() *http.Client

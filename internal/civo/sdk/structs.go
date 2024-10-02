@@ -1,15 +1,9 @@
 package sdk
 
 import (
-	"context"
 	"errors"
+	"strings"
 )
-
-// Civoer is the interface that represents a high-level Civo client.
-type Civoer interface {
-	Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error
-	GetRegion() string
-}
 
 // ErrNotFound is returned when an item is not found.
 var ErrNotFound = errors.New("not found")
@@ -128,13 +122,10 @@ func (n Network) GetResourceType() string { return "network" }      // GetResour
 
 // ObjectStore is a Civo object store.
 type ObjectStore struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Credentials struct {
-		ID   string `json:"credential_id"`
-		Name string `json:"name"`
-	} `json:"owner_info"`
-	Status string `json:"status"`
+	ID          string                `json:"id"`
+	Name        string                `json:"name"`
+	Credentials ObjectStoreCredential `json:"owner_info"`
+	Status      string                `json:"status"`
 }
 
 func (o ObjectStore) GetID() string           { return o.ID }               // GetID returns the ID of the object store.
@@ -182,3 +173,25 @@ func (l LoadBalancer) GetName() string         { return l.Name }              //
 func (l LoadBalancer) GetAPIEndpoint() string  { return "/v2/loadbalancers" } // GetAPIEndpoint returns the API endpoint for load balancers.
 func (l LoadBalancer) IsSinglePaged() bool     { return true }                // IsSinglePaged returns whether the resource is single paged.
 func (l LoadBalancer) GetResourceType() string { return "load balancer" }     // GetResourceType returns the type of the resource.
+
+func IsPaginatedResource(endpoint string) (bool, error) {
+	resources := [...]APIResource{
+		&Instance{},
+		&Firewall{},
+		&Volume{},
+		&KubernetesCluster{},
+		&Network{},
+		&ObjectStore{},
+		&ObjectStoreCredential{},
+		&SSHKey{},
+		&LoadBalancer{},
+	}
+
+	for _, resource := range resources {
+		if strings.HasPrefix(endpoint, resource.GetAPIEndpoint()) {
+			return !resource.IsSinglePaged(), nil
+		}
+	}
+
+	return false, ErrNotFound
+}

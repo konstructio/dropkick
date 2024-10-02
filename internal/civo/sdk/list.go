@@ -6,9 +6,45 @@ import (
 	"strconv"
 )
 
-// paginatedResponse is a helper struct to unmarshal paginated responses from
+func (c *Client) GetInstances(ctx context.Context) ([]Instance, error) {
+	return getAll[Instance](ctx, c)
+}
+
+func (c *Client) GetFirewalls(ctx context.Context) ([]Firewall, error) {
+	return getAll[Firewall](ctx, c)
+}
+
+func (c *Client) GetVolumes(ctx context.Context) ([]Volume, error) {
+	return getAll[Volume](ctx, c)
+}
+
+func (c *Client) GetKubernetesClusters(ctx context.Context) ([]KubernetesCluster, error) {
+	return getAll[KubernetesCluster](ctx, c)
+}
+
+func (c *Client) GetNetworks(ctx context.Context) ([]Network, error) {
+	return getAll[Network](ctx, c)
+}
+
+func (c *Client) GetObjectStores(ctx context.Context) ([]ObjectStore, error) {
+	return getAll[ObjectStore](ctx, c)
+}
+
+func (c *Client) GetObjectStoreCredentials(ctx context.Context) ([]ObjectStoreCredential, error) {
+	return getAll[ObjectStoreCredential](ctx, c)
+}
+
+func (c *Client) GetLoadBalancers(ctx context.Context) ([]LoadBalancer, error) {
+	return getAll[LoadBalancer](ctx, c)
+}
+
+func (c *Client) GetSSHKeys(ctx context.Context) ([]SSHKey, error) {
+	return getAll[SSHKey](ctx, c)
+}
+
+// PaginatedResponse is a helper struct to unmarshal paginated responses from
 // the Civo API.
-type paginatedResponse[T Resource] struct {
+type PaginatedResponse[T Resource] struct {
 	Page    int `json:"page"`
 	PerPage int `json:"per_page"`
 	Pages   int `json:"pages"`
@@ -16,7 +52,7 @@ type paginatedResponse[T Resource] struct {
 }
 
 // GetAll returns all resources of a given type.
-func GetAll[T Resource](ctx context.Context, c Civoer) ([]T, error) {
+func getAll[T Resource](ctx context.Context, c Civoer) ([]T, error) {
 	var item T
 
 	if item.IsSinglePaged() {
@@ -38,7 +74,7 @@ func getPaginated[T Resource](ctx context.Context, c Civoer, endpoint string) ([
 			"region":   c.GetRegion(),
 		}
 
-		var resp paginatedResponse[T]
+		var resp PaginatedResponse[T]
 		err := c.Do(ctx, endpoint, "GET", &resp, params)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get items: %w", err)

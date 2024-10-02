@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/konstructio/dropkick/internal/civo/sdk/json"
+	"github.com/konstructio/dropkick/internal/civo/sdk/testutils"
 )
 
-func Test_GetByID(t *testing.T) {
+func Test_getByID(t *testing.T) {
 	t.Run("successful fetch of an instance by ID", func(t *testing.T) {
 		ctx := context.TODO()
 
@@ -19,16 +20,16 @@ func Test_GetByID(t *testing.T) {
 		expectedInstanceName := "test-instance"
 		expectedInstanceStatus := "ACTIVE"
 
-		c := &MockCivo{
+		c := &testutils.MockCivo{
 			FnDo: func(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
 				// location should be /v2/instances/123 since we're getting ID 123
-				assertEqual(t, location, expectedLocation)
+				testutils.AssertEqual(t, location, expectedLocation)
 
 				// method should be GET since we're fetching an instance
-				assertEqual(t, method, expectedMethod)
+				testutils.AssertEqual(t, method, expectedMethod)
 
 				// params should contain the region
-				assertEqual(t, params["region"], "lon1")
+				testutils.AssertEqual(t, params["region"], "lon1")
 
 				instance, ok := output.(*Instance)
 				if !ok {
@@ -36,7 +37,7 @@ func Test_GetByID(t *testing.T) {
 				}
 
 				// instance should be populated with the response from the API
-				assertEqual(t, instance.ID, "123")
+				testutils.AssertEqual(t, instance.ID, "123")
 
 				// attach the custom values to it
 				instance.Name = expectedInstanceName
@@ -51,14 +52,14 @@ func Test_GetByID(t *testing.T) {
 		}
 
 		instance := Instance{ID: expectedID}
-		err := GetByID(ctx, c, &instance)
+		err := getByID(ctx, c, &instance)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
 		// instance should be populated with the custom values
-		assertEqual(t, instance.Name, expectedInstanceName)
-		assertEqual(t, instance.Status, expectedInstanceStatus)
+		testutils.AssertEqual(t, instance.Name, expectedInstanceName)
+		testutils.AssertEqual(t, instance.Status, expectedInstanceStatus)
 	})
 
 	t.Run("instance by ID not found", func(t *testing.T) {
@@ -68,16 +69,16 @@ func Test_GetByID(t *testing.T) {
 		expectedLocation := "/v2/instances/" + expectedID
 		expectedMethod := http.MethodGet
 
-		c := &MockCivo{
+		c := &testutils.MockCivo{
 			FnDo: func(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
 				// location should be /v2/instances/123 since we're getting ID 123
-				assertEqual(t, location, expectedLocation)
+				testutils.AssertEqual(t, location, expectedLocation)
 
 				// method should be GET since we're fetching an instance
-				assertEqual(t, method, expectedMethod)
+				testutils.AssertEqual(t, method, expectedMethod)
 
 				// params should contain the region
-				assertEqual(t, params["region"], "lon1")
+				testutils.AssertEqual(t, params["region"], "lon1")
 
 				return &json.HTTPError{Code: http.StatusNotFound}
 			},
@@ -88,7 +89,7 @@ func Test_GetByID(t *testing.T) {
 		}
 
 		instance := Instance{ID: expectedID}
-		err := GetByID(ctx, c, &instance)
+		err := getByID(ctx, c, &instance)
 		if !errors.Is(err, ErrNotFound) {
 			t.Fatalf("expected error to be ErrNotFound, got %v", err)
 		}
@@ -97,7 +98,7 @@ func Test_GetByID(t *testing.T) {
 	t.Run("empty ID field", func(t *testing.T) {
 		ctx := context.TODO()
 
-		c := &MockCivo{
+		c := &testutils.MockCivo{
 			// FnDo doesn't get called because we fail before we make
 			// the call to it.
 			// If we were to pass, the mock returns an error too, which
@@ -109,7 +110,7 @@ func Test_GetByID(t *testing.T) {
 		}
 
 		instance := Instance{}
-		err := GetByID(ctx, c, &instance)
+		err := getByID(ctx, c, &instance)
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}
@@ -123,7 +124,7 @@ func Test_GetByID(t *testing.T) {
 		ctx := context.TODO()
 		errUnexpected := errors.New("unexpected error")
 
-		c := &MockCivo{
+		c := &testutils.MockCivo{
 			FnDo: func(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
 				return errUnexpected
 			},
@@ -134,7 +135,7 @@ func Test_GetByID(t *testing.T) {
 		}
 
 		instance := Instance{ID: "123"}
-		err := GetByID(ctx, c, &instance)
+		err := getByID(ctx, c, &instance)
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}

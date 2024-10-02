@@ -1,0 +1,183 @@
+package testutils
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"reflect"
+	"strconv"
+	"testing"
+)
+
+// AssertEqual is a helper function to compare two values.
+func AssertEqual[T comparable](t *testing.T, v1, v2 T) {
+	t.Helper()
+
+	if v1 != v2 {
+		t.Fatalf("expected \"%v\", got \"%v\"", v1, v2)
+	}
+}
+
+// AssertEqualf is a helper function to compare two values with a custom format.
+func AssertEqualf[T comparable](t *testing.T, v1, v2 T, format string, args ...interface{}) {
+	t.Helper()
+
+	if v1 != v2 {
+		t.Fatalf(format, args...)
+	}
+}
+
+// AssertNoError is a helper function to check if an error is nil.
+func AssertNoError(t *testing.T, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+// AssertNoErrorf is a helper function to check if an error is nil with a custom format.
+func AssertNoErrorf(t *testing.T, err error, format string, args ...interface{}) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf(format, args...)
+	}
+}
+
+// AssertErrorEqual is a helper function to compare two errors.
+func AssertErrorEqual(t *testing.T, expected error, got error) {
+	t.Helper()
+
+	if !errors.Is(expected, got) {
+		t.Fatalf("expected error to be \"%#v\", got \"%#v\"", expected, got)
+	}
+}
+
+// MockCivo is a mock implementation of the Civoer interface.
+type MockCivo struct {
+	FnDo          func(ctx context.Context, location, method string, output interface{}, params map[string]string) error
+	FnGetEndpoint func() string
+	FnGetRegion   func() string
+	FnGetClient   func() *http.Client
+}
+
+// Do is a mock implementation of the Civoer interface.
+func (m *MockCivo) Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
+	if m.FnDo == nil {
+		return fmt.Errorf("method \"do\" not implemented")
+	}
+
+	return m.FnDo(ctx, location, method, output, params)
+}
+
+// GetClient is a mock implementation of the Civoer interface.
+func (m *MockCivo) GetClient() *http.Client {
+	if m.FnGetClient == nil {
+		return nil
+	}
+
+	return m.FnGetClient()
+}
+
+// GetRegion is a mock implementation of the Civoer interface.
+func (m *MockCivo) GetRegion() string {
+	if m.FnGetRegion == nil {
+		return ""
+	}
+
+	return m.FnGetRegion()
+}
+
+// GetEndpoint is a mock implementation of the Civoer interface.
+func (m *MockCivo) GetEndpoint() string {
+	if m.FnGetEndpoint == nil {
+		return ""
+	}
+
+	return m.FnGetEndpoint()
+}
+
+// ParseParamNumber is a helper function to parse a number from a map of parameters.
+// It will return the value of the key as an integer. If the key is not found, it will
+// return 1. If the key is found but the value is not a number, it will fail the test.
+// If shouldFail is set to true, the function will fail the test if the key is not found.
+func ParseParamNumber(t *testing.T, location string, params map[string]string, key string, defval int, shouldFail bool) int {
+	t.Helper()
+
+	page, ok := params["page"]
+	if !ok {
+		if shouldFail {
+			t.Fatalf("expected page to be set for endpoint: %q", location)
+		}
+
+		// Default to page 1 if not found.
+		return defval
+	}
+
+	pageNumber, err := strconv.Atoi(page)
+	if err != nil {
+		t.Fatalf("failed to parse page number for endpoint %q: %v", location, err)
+	}
+
+	return pageNumber
+}
+
+// GetResultsForPage is a helper function to get results for a specific page.
+// It works by providing a list of resources in a slice (called "results") and
+// then specifying the page and perPage values. The function will return a
+// slice of resources for the current page and the total number of pages.
+// WARNING: Since Civo returns page 1 for any page that overflows, the function
+// will return the first page if the requested page is greater than the total
+// number of pages. Consider reading the `currentPage`, `itemsPerPage`, and
+// `totalPages` values to determine if the page is valid.
+func GetResultsForPage[T any](t *testing.T, results []T, page, perPage int) (items []T, currentPage, itemsPerPage, totalPages int) {
+	t.Helper()
+
+	totalItems := len(results)
+	totalPages = (totalItems + perPage - 1) / perPage
+
+	// Civo-ism: Return the first page if the requested page is greater than the
+	// total number of pages.
+	if page < 1 || page > totalPages {
+		page = 1
+	}
+
+	// Calculate the start and end index for the current page items.
+	start := (page - 1) * perPage
+	end := start + perPage
+	if end > totalItems {
+		end = totalItems
+	}
+
+	// Create a slice of items for the current page, use append to prevent
+	// the original slice from being carried around.
+	items = append([]T{}, results[start:end]...)
+	currentPage = page
+	itemsPerPage = perPage
+	return
+}
+
+// InjectIntoSlice is a helper function to inject a slice into another slice.
+// The destination must be a pointer to a slice, and the source must be a slice.
+func InjectIntoSlice(t *testing.T, destination, source interface{}) {
+	t.Helper()
+
+	// source must be a slice of some kind
+	sliceValue := reflect.ValueOf(destination)
+
+	if sliceValue.Kind() != reflect.Ptr || sliceValue.Elem().Kind() != reflect.Slice {
+		t.Fatalf("expected a pointer to the object slice, got %v", sliceValue.Kind())
+	}
+
+	// destination needs to be a slice (doesn't matter what kind)
+	sourceValue := reflect.ValueOf(source)
+
+	if sourceValue.Kind() != reflect.Slice {
+		t.Fatalf("expected a slice, got %v", sourceValue.Kind())
+	}
+
+	// append the source slice to the destination slice
+	sliceValue.Elem().Set(reflect.AppendSlice(sliceValue.Elem(), sourceValue))
+}
