@@ -11,7 +11,7 @@ import (
 
 // NukeEverything deletes all resources associated with the Civo account it's
 // targeting in the given Civo region.
-func (c *Civo) NukeEverything() error {
+func (c *Civo) NukeEverything(ctx context.Context) error {
 	// The order in which these resources are deleted matter. We start with those
 	// resources that have dependencies. In Civo, certain resources won't delete
 	// their dependencies (for example, deleting an Instance that is on a Network
@@ -19,48 +19,48 @@ func (c *Civo) NukeEverything() error {
 	// So we delete first those resources that could cascade delete other resources.
 
 	// We start by deleting all Load Balancers, which tie to Firewalls and Kubernetes Clusters.
-	if err := nukeAllResources(context.Background(), c, sdk.LoadBalancer{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.LoadBalancer{}); err != nil {
 		return err
 	}
 
 	// Kubernetes clusters depend on volumes (PVCs), but we will delete the PVCs
 	// after the clusters to clean them all.
-	if err := nukeAllResources(context.Background(), c, sdk.KubernetesCluster{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.KubernetesCluster{}); err != nil {
 		return err
 	}
 
 	// Then we delete the instances, which might also have volumes attached.
-	if err := nukeAllResources(context.Background(), c, sdk.Instance{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.Instance{}); err != nil {
 		return err
 	}
 
 	// Now we delete the volumes.
-	if err := nukeAllResources(context.Background(), c, sdk.Volume{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.Volume{}); err != nil {
 		return err
 	}
 
 	// And we also delete the SSH keys, including those now orphaned by instances.
-	if err := nukeAllResources(context.Background(), c, sdk.SSHKey{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.SSHKey{}); err != nil {
 		return err
 	}
 
 	// Then we delete object stores, which will leave their credentials orphaned.
-	if err := nukeAllResources(context.Background(), c, sdk.ObjectStore{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.ObjectStore{}); err != nil {
 		return err
 	}
 
 	// Now we delete the object store credentials.
-	if err := nukeAllResources(context.Background(), c, sdk.ObjectStoreCredential{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.ObjectStoreCredential{}); err != nil {
 		return err
 	}
 
 	// Firewalls are deleted next, since we need them to be gone before deleting networks.
-	if err := nukeAllResources(context.Background(), c, sdk.Firewall{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.Firewall{}); err != nil {
 		return err
 	}
 
 	// And finally, we delete the networks.
-	if err := nukeAllResources(context.Background(), c, sdk.Network{}); err != nil {
+	if err := nukeAllResources(ctx, c, sdk.Network{}); err != nil {
 		return err
 	}
 

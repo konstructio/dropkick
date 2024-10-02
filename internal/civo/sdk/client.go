@@ -10,6 +10,8 @@ import (
 // JSONClient is an interface that allows us to make requests to the Civo API.
 type JSONClient interface {
 	Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error
+	GetClient() *http.Client
+	GetEndpoint() string
 }
 
 // Client is a Civo client.

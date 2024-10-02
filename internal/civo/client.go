@@ -91,14 +91,19 @@ func WithAPIURL(apiURL string) Option {
 	}
 }
 
+// customLogger is a custom logger interface.
 type customLogger interface {
 	Errorf(format string, v ...interface{})
 	Infof(format string, v ...interface{})
 	Warnf(format string, v ...interface{})
 }
 
+// _ is a compile-time check to ensure that Civo implements
+// the customLogger interface.
 var _ customLogger = &logger.Logger{}
 
+// debuggableHTTPClient is an HTTP client that logs requests if
+// the HTTP_DEBUG environment variable is set.
 var debuggableHTTPClient = &http.Client{
 	Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		if os.Getenv("HTTP_DEBUG") == "" {
@@ -110,8 +115,10 @@ var debuggableHTTPClient = &http.Client{
 	}),
 }
 
+// roundTripperFunc is a function that implements the http.RoundTripper interface.
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
+// RoundTrip implements the http.RoundTripper interface.
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }

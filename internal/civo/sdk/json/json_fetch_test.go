@@ -284,7 +284,7 @@ func Test_getClient(t *testing.T) {
 		client := &http.Client{}
 		jsonClient := New(client, "", "")
 
-		if got, want := jsonClient.getClient(), client; got != want {
+		if got, want := jsonClient.GetClient(), client; got != want {
 			t.Fatalf("expecting client to be %v, got %v", want, got)
 		}
 	})
@@ -292,7 +292,7 @@ func Test_getClient(t *testing.T) {
 	t.Run("return default client", func(t *testing.T) {
 		jsonClient := New(nil, "", "")
 
-		if got, want := jsonClient.getClient(), http.DefaultClient; got != want {
+		if got, want := jsonClient.GetClient(), http.DefaultClient; got != want {
 			t.Fatalf("expecting client to be %v, got %v", want, got)
 		}
 	})

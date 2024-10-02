@@ -25,14 +25,19 @@ func New(client *http.Client, endpoint, bearerToken string) *Client {
 	}
 }
 
-// getClient returns the http client to use for requests as configured
+// GetClient returns the http client to use for requests as configured
 // when creating the civoJSONClient, or the default Go http client if none
 // was provided.
-func (j *Client) getClient() *http.Client {
+func (j *Client) GetClient() *http.Client {
 	if j.client != nil {
 		return j.client
 	}
 	return http.DefaultClient
+}
+
+// getEndpoint returns the endpoint of the client.
+func (j *Client) GetEndpoint() string {
+	return j.endpoint
 }
 
 // knownCodes is a map of known Civo error codes to their corresponding
@@ -113,7 +118,7 @@ func (j *Client) Do(ctx context.Context, location, method string, output interfa
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", j.bearerToken))
 
-	res, err := j.getClient().Do(req)
+	res, err := j.GetClient().Do(req)
 	if err != nil {
 		return fmt.Errorf("unable to send request: %w", err)
 	}

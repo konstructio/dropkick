@@ -72,13 +72,13 @@ func runCivo(ctx context.Context, output io.Writer, opts civoOptions, token stri
 	}
 
 	if opts.onlyOrphans {
-		if err := client.NukeOrphanedResources(); err != nil {
+		if err := client.NukeOrphanedResources(ctx); err != nil {
 			return fmt.Errorf("unable to nuke orphaned resources: %w", err)
 		}
 		return nil
 	}
 
-	if err := client.NukeEverything(); err != nil {
+	if err := client.NukeEverything(ctx); err != nil {
 		if opts.nuke {
 			return fmt.Errorf("unable to nuke resources: %w", err)
 		}
