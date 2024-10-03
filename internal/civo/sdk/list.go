@@ -52,6 +52,8 @@ func (c *Client) GetSSHKeys(ctx context.Context) ([]SSHKey, error) {
 }
 
 // Each iterates over all resources of a given type.
+//
+//nolint:dupl // the code uses generics under the hood and there's no support for generics in methods.
 func (c *Client) Each(ctx context.Context, v APIResource, iterator func(APIResource) error) error {
 	switch r := v.(type) {
 	case Instance:

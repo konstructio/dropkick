@@ -8,6 +8,8 @@ import (
 )
 
 // DeleteAll removes all resources of a given type from the Civo API.
+//
+//nolint:dupl // the code uses generics under the hood and there's no support for generics in methods.
 func (c *Client) DeleteAll(ctx context.Context, v APIResource, conditionFunc func(APIResource) bool) error {
 	switch r := v.(type) {
 	case Instance:
