@@ -7,49 +7,76 @@ import (
 	"path"
 )
 
-// DeleteInstance removes an instance from the Civo API.
-func (c *Client) DeleteInstance(ctx context.Context, instance Instance) error {
-	return deleteResource(ctx, c, instance)
+// DeleteAll removes all resources of a given type from the Civo API.
+func (c *Client) DeleteAll(ctx context.Context, v APIResource, conditionFunc func(APIResource) bool) error {
+	switch r := v.(type) {
+	case Instance:
+		return nuke(ctx, c, func(i Instance) bool { return conditionFunc(i) })
+	case Firewall:
+		return nuke(ctx, c, func(f Firewall) bool { return conditionFunc(f) })
+	case Volume:
+		return nuke(ctx, c, func(v Volume) bool { return conditionFunc(v) })
+	case KubernetesCluster:
+		return nuke(ctx, c, func(k KubernetesCluster) bool { return conditionFunc(k) })
+	case Network:
+		return nuke(ctx, c, func(n Network) bool { return conditionFunc(n) })
+	case ObjectStore:
+		return nuke(ctx, c, func(o ObjectStore) bool { return conditionFunc(o) })
+	case ObjectStoreCredential:
+		return nuke(ctx, c, func(o ObjectStoreCredential) bool { return conditionFunc(o) })
+	case LoadBalancer:
+		return nuke(ctx, c, func(l LoadBalancer) bool { return conditionFunc(l) })
+	case SSHKey:
+		return nuke(ctx, c, func(s SSHKey) bool { return conditionFunc(s) })
+	default:
+		return fmt.Errorf("unsupported resource type: %T", r)
+	}
 }
 
-// DeleteFirewall removes a firewall from the Civo API.
-func (c *Client) DeleteFirewall(ctx context.Context, firewall Firewall) error {
-	return deleteResource(ctx, c, firewall)
+// nuke removes all resources of a given type from the Civo API.
+func nuke[T Resource](ctx context.Context, c Civoer, filterFunc func(T) bool) error {
+	var res T
+
+	resources, err := getAll[T](ctx, c)
+	if err != nil {
+		return fmt.Errorf("unable to list %s: %w", res.GetResourceType(), err)
+	}
+
+	for _, r := range resources {
+		if filterFunc(r) {
+			if err := deleteResource(ctx, c, r); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
-// DeleteVolume removes a volume from the Civo API.
-func (c *Client) DeleteVolume(ctx context.Context, volume Volume) error {
-	return deleteResource(ctx, c, volume)
-}
-
-// DeleteKubernetesCluster removes a Kubernetes cluster from the Civo API.
-func (c *Client) DeleteKubernetesCluster(ctx context.Context, cluster KubernetesCluster) error {
-	return deleteResource(ctx, c, cluster)
-}
-
-// DeleteNetwork removes a network from the Civo API.
-func (c *Client) DeleteNetwork(ctx context.Context, network Network) error {
-	return deleteResource(ctx, c, network)
-}
-
-// DeleteObjectStore removes an object store from the Civo API.
-func (c *Client) DeleteObjectStore(ctx context.Context, objstore ObjectStore) error {
-	return deleteResource(ctx, c, objstore)
-}
-
-// DeleteObjectStoreCredential removes an object store credential from the Civo API.
-func (c *Client) DeleteObjectStoreCredential(ctx context.Context, objstorecred ObjectStoreCredential) error {
-	return deleteResource(ctx, c, objstorecred)
-}
-
-// DeleteLoadBalancer removes a load balancer from the Civo API.
-func (c *Client) DeleteLoadBalancer(ctx context.Context, lb LoadBalancer) error {
-	return deleteResource(ctx, c, lb)
-}
-
-// DeleteSSHKey removes an SSH key from the Civo API.
-func (c *Client) DeleteSSHKey(ctx context.Context, sshkey SSHKey) error {
-	return deleteResource(ctx, c, sshkey)
+// Delete removes a resource from the Civo API.
+func (c *Client) Delete(ctx context.Context, resource APIResource) error {
+	switch r := resource.(type) {
+	case Instance:
+		return deleteResource(ctx, c, r)
+	case Firewall:
+		return deleteResource(ctx, c, r)
+	case Volume:
+		return deleteResource(ctx, c, r)
+	case KubernetesCluster:
+		return deleteResource(ctx, c, r)
+	case Network:
+		return deleteResource(ctx, c, r)
+	case ObjectStore:
+		return deleteResource(ctx, c, r)
+	case ObjectStoreCredential:
+		return deleteResource(ctx, c, r)
+	case LoadBalancer:
+		return deleteResource(ctx, c, r)
+	case SSHKey:
+		return deleteResource(ctx, c, r)
+	default:
+		return fmt.Errorf("unsupported resource type: %T", r)
+	}
 }
 
 // Delete removes a resource from the Civo API. The resource must have

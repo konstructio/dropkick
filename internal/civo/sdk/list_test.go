@@ -47,7 +47,7 @@ func Test_GetAll(t *testing.T) {
 				}
 
 				// decide what to return when the page is requested
-				res, pageInt, perPage, totalPages := testutils.GetResultsForPage(t, responses, pageInt, perPage)
+				res, pageInt, perPage, totalPages := getResultsForPage(t, responses, pageInt, perPage)
 
 				// Return the response
 				*output.(*PaginatedResponse[Instance]) = PaginatedResponse[Instance]{
@@ -169,7 +169,7 @@ func Test_GetAll(t *testing.T) {
 
 		// Ensure the error is the expected error
 		_, err := getAll[Instance](ctx, c)
-		testutils.AssertErrorEqual(t, err, expectedError)
+		testutils.AssertErrorEqual(t, expectedError, err)
 	})
 
 	t.Run("fetch single paged resource", func(t *testing.T) {
@@ -290,6 +290,43 @@ func Test_GetAll(t *testing.T) {
 		}
 
 		_, err := getAll[Volume](ctx, c)
-		testutils.AssertErrorEqual(t, err, expectedError)
+		testutils.AssertErrorEqual(t, expectedError, err)
 	})
+}
+
+// getResultsForPage is a helper function to get results for a specific page.
+// It works by providing a list of resources in a slice (called "results") and
+// then specifying the page and perPage values. The function will return a
+// slice of resources for the current page and the total number of pages.
+// WARNING: Since Civo returns page 1 for any page that overflows, the function
+// will return the first page if the requested page is greater than the total
+// number of pages. Consider reading the `currentPage`, `itemsPerPage`, and
+// `totalPages` values to determine if the page is valid.
+//
+//nolint:nonamedreturns // this is a unit test helper function.
+func getResultsForPage[T any](t *testing.T, results []T, page, perPage int) (items []T, currentPage, itemsPerPage, totalPages int) {
+	t.Helper()
+
+	totalItems := len(results)
+	totalPages = (totalItems + perPage - 1) / perPage
+
+	// Civo-ism: Return the first page if the requested page is greater than the
+	// total number of pages.
+	if page < 1 || page > totalPages {
+		page = 1
+	}
+
+	// Calculate the start and end index for the current page items.
+	start := (page - 1) * perPage
+	end := start + perPage
+	if end > totalItems {
+		end = totalItems
+	}
+
+	// Create a slice of items for the current page, use append to prevent
+	// the original slice from being carried around.
+	items = append([]T{}, results[start:end]...)
+	currentPage = page
+	itemsPerPage = perPage
+	return
 }

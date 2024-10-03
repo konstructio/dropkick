@@ -43,7 +43,6 @@ linters:
     - grouper
     - importas
     - inamedparam
-    - interfacebloat
     - ireturn
     - loggercheck
     - makezero

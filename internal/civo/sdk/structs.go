@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"errors"
-	"strings"
 )
 
 // ErrNotFound is returned when an item is not found.
@@ -111,11 +110,12 @@ func (k KubernetesCluster) GetResourceType() string { return "kubernetes cluster
 type Network struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
+	Label  string `json:"label"`
 	Status string `json:"status"`
 }
 
 func (n Network) GetID() string           { return n.ID }           // GetID returns the ID of the network.
-func (n Network) GetName() string         { return n.Name }         // GetName returns the name of the network.
+func (n Network) GetName() string         { return n.Label }        // GetName returns the name of the network.
 func (n Network) GetAPIEndpoint() string  { return "/v2/networks" } // GetAPIEndpoint returns the API endpoint for networks.
 func (n Network) IsSinglePaged() bool     { return true }           // IsSinglePaged returns whether the resource is single paged.
 func (n Network) GetResourceType() string { return "network" }      // GetResourceType returns the type of the resource.
@@ -173,25 +173,3 @@ func (l LoadBalancer) GetName() string         { return l.Name }              //
 func (l LoadBalancer) GetAPIEndpoint() string  { return "/v2/loadbalancers" } // GetAPIEndpoint returns the API endpoint for load balancers.
 func (l LoadBalancer) IsSinglePaged() bool     { return true }                // IsSinglePaged returns whether the resource is single paged.
 func (l LoadBalancer) GetResourceType() string { return "load balancer" }     // GetResourceType returns the type of the resource.
-
-func IsPaginatedResource(endpoint string) (bool, error) {
-	resources := [...]APIResource{
-		&Instance{},
-		&Firewall{},
-		&Volume{},
-		&KubernetesCluster{},
-		&Network{},
-		&ObjectStore{},
-		&ObjectStoreCredential{},
-		&SSHKey{},
-		&LoadBalancer{},
-	}
-
-	for _, resource := range resources {
-		if strings.HasPrefix(endpoint, resource.GetAPIEndpoint()) {
-			return !resource.IsSinglePaged(), nil
-		}
-	}
-
-	return false, ErrNotFound
-}

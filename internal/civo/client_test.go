@@ -3,10 +3,119 @@ package civo
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/konstructio/dropkick/internal/civo/sdk"
 	"github.com/konstructio/dropkick/internal/logger"
 )
+
+// mockClient is a mock implementation of the Client interface.
+type mockClient struct {
+	fnGetInstances              func(ctx context.Context) ([]sdk.Instance, error)
+	fnGetFirewalls              func(ctx context.Context) ([]sdk.Firewall, error)
+	fnGetVolumes                func(ctx context.Context) ([]sdk.Volume, error)
+	fnGetKubernetesClusters     func(ctx context.Context) ([]sdk.KubernetesCluster, error)
+	fnGetNetworks               func(ctx context.Context) ([]sdk.Network, error)
+	fnGetObjectStores           func(ctx context.Context) ([]sdk.ObjectStore, error)
+	fnGetObjectStoreCredentials func(ctx context.Context) ([]sdk.ObjectStoreCredential, error)
+	fnGetLoadBalancers          func(ctx context.Context) ([]sdk.LoadBalancer, error)
+	fnGetSSHKeys                func(ctx context.Context) ([]sdk.SSHKey, error)
+	fnDelete                    func(ctx context.Context, resource sdk.APIResource) error
+	fnEach                      func(ctx context.Context, v sdk.APIResource, iterator func(sdk.APIResource) error) error
+}
+
+// Ensure mockClient implements the Client interface.
+var _ Client = &mockClient{}
+
+func (m *mockClient) GetInstances(ctx context.Context) ([]sdk.Instance, error) {
+	return m.fnGetInstances(ctx)
+}
+
+func (m *mockClient) GetFirewalls(ctx context.Context) ([]sdk.Firewall, error) {
+	return m.fnGetFirewalls(ctx)
+}
+
+func (m *mockClient) GetVolumes(ctx context.Context) ([]sdk.Volume, error) {
+	return m.fnGetVolumes(ctx)
+}
+
+func (m *mockClient) GetKubernetesClusters(ctx context.Context) ([]sdk.KubernetesCluster, error) {
+	return m.fnGetKubernetesClusters(ctx)
+}
+
+func (m *mockClient) GetNetworks(ctx context.Context) ([]sdk.Network, error) {
+	return m.fnGetNetworks(ctx)
+}
+
+func (m *mockClient) GetObjectStores(ctx context.Context) ([]sdk.ObjectStore, error) {
+	return m.fnGetObjectStores(ctx)
+}
+
+func (m *mockClient) GetObjectStoreCredentials(ctx context.Context) ([]sdk.ObjectStoreCredential, error) {
+	return m.fnGetObjectStoreCredentials(ctx)
+}
+
+func (m *mockClient) GetLoadBalancers(ctx context.Context) ([]sdk.LoadBalancer, error) {
+	return m.fnGetLoadBalancers(ctx)
+}
+
+func (m *mockClient) GetSSHKeys(ctx context.Context) ([]sdk.SSHKey, error) {
+	return m.fnGetSSHKeys(ctx)
+}
+
+func (m *mockClient) Delete(ctx context.Context, resource sdk.APIResource) error {
+	return m.fnDelete(ctx, resource)
+}
+
+func (m *mockClient) Each(ctx context.Context, v sdk.APIResource, iterator func(sdk.APIResource) error) error {
+	return m.fnEach(ctx, v, iterator)
+}
+
+// runEach runs the given function for each item in the list.
+func runEach[T sdk.Resource](list []T, fn func(sdk.APIResource) error) error {
+	for _, item := range list {
+		if err := fn(item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// generator generates a list of resources of type sdk.Resource, which are
+// Civo-specific resources.
+func generator[T sdk.Resource](n int) []T {
+	list := make([]T, n)
+
+	for i := 0; i < n; i++ {
+		resType := reflect.TypeOf((*T)(nil)).Elem()
+		resValue := reflect.New(resType).Elem()
+
+		// lowercase type name
+		typeName := strings.ToLower(resType.Name())
+
+		// set the ID field
+		if idField := resValue.FieldByName("ID"); idField.IsValid() && idField.CanSet() {
+			idField.SetString("id-" + strconv.Itoa(i+1))
+		}
+
+		// set the Name field
+		if nameField := resValue.FieldByName("Name"); nameField.IsValid() && nameField.CanSet() {
+			nameField.SetString(typeName + "-" + strconv.Itoa(i+1))
+		}
+
+		// for firewalls, set the label as the name
+		if labelField := resValue.FieldByName("Label"); labelField.IsValid() && labelField.CanSet() {
+			labelField.SetString(typeName + "-" + strconv.Itoa(i+1))
+		}
+
+		list[i] = resValue.Interface().(T)
+	}
+
+	return list
+}
 
 func TestNew(t *testing.T) {
 	cases := []struct {
@@ -14,7 +123,6 @@ func TestNew(t *testing.T) {
 		Opts       []Option
 		Token      string
 		Region     string
-		APIURL     string
 		Context    context.Context
 		Logger     *logger.Logger
 		Nuke       bool
@@ -25,7 +133,6 @@ func TestNew(t *testing.T) {
 			Name:       "all good",
 			Token:      "token",
 			Region:     "region",
-			APIURL:     "https://api.example.com",
 			Context:    context.Background(),
 			Logger:     logger.None,
 			Nuke:       true,
@@ -50,13 +157,6 @@ func TestNew(t *testing.T) {
 			Name:    "missing region",
 			Token:   "token",
 			Region:  "",
-			WantErr: true,
-		},
-		{
-			Name:    "impossible client using invalid URL",
-			Token:   "token",
-			Region:  "region",
-			APIURL:  "#@$%^&*",
 			WantErr: true,
 		},
 		{
@@ -85,10 +185,6 @@ func TestNew(t *testing.T) {
 
 			if tc.Region != "" {
 				opts = append(opts, WithRegion(tc.Region))
-			}
-
-			if tc.APIURL != "" {
-				opts = append(opts, WithAPIURL(tc.APIURL))
 			}
 
 			if tc.Logger != nil {
@@ -129,14 +225,6 @@ func TestNew(t *testing.T) {
 
 			if client.region != tc.Region {
 				tt.Fatalf("expected client.region to be %q, got %q", tc.Region, client.region)
-			}
-
-			if tc.APIURL == "" && client.apiURL != civoAPIURL {
-				tt.Fatalf("expected client.apiURL to be %q, got %q", civoAPIURL, client.apiURL)
-			}
-
-			if tc.APIURL != "" && client.apiURL != tc.APIURL {
-				tt.Fatalf("expected client.apiURL to be %q, got %q", tc.APIURL, client.apiURL)
 			}
 
 			if tc.Logger == nil && client.logger != logger.None {

@@ -60,7 +60,6 @@ func runCivo(ctx context.Context, output io.Writer, opts civoOptions, token stri
 	}
 
 	client, err := civo.New(
-		civo.WithContext(ctx),
 		civo.WithToken(token),
 		civo.WithRegion(opts.region),
 		civo.WithNameFilter(opts.nameFilter),

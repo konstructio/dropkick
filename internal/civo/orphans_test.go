@@ -2,7 +2,7 @@ package civo
 
 import (
 	"context"
-	"net/http"
+	"os"
 	"testing"
 
 	"github.com/konstructio/dropkick/internal/civo/sdk"
@@ -11,178 +11,99 @@ import (
 )
 
 func Test_NukeOrphanedResources(t *testing.T) {
-	t.Run("find at least one orphan per resource and delete it without name filter", func(t *testing.T) {
-		const token = "abc123"
-		const region = "nyc1"
+	instances := []sdk.Instance{{
+		ID:        "1",
+		Name:      "test-instance-1",
+		SSHKeyID:  "1", // uses an existing SSH key
+		NetworkID: "1", // uses an existing network
+	}, {
+		ID:   "2",
+		Name: "test-instance-2",
+	}}
 
-		instances := []sdk.Instance{
-			{ID: "1", Name: "test-instance-1", SSHKeyID: "1", NetworkID: "1", FirewallID: "1"},
-			{ID: "2", Name: "test-instance-2", SSHKeyID: "2", NetworkID: "3", FirewallID: "1"},
-			{ID: "3", Name: "test-instance-3", SSHKeyID: "2", NetworkID: "1", FirewallID: "1"},
-			{ID: "4", Name: "test-instance-4"},
-			{ID: "5", Name: "test-instance-5"},
-		}
+	volumes := []sdk.Volume{{
+		ID:        "1",
+		Name:      "test-volume-1",
+		Status:    "attached", // attached to an existing instance
+		NetworkID: "1",        // uses an existing network
+	}, {
+		ID:   "2",
+		Name: "test-volume-2",
+	}}
 
-		sshkeys := []sdk.SSHKey{
-			{ID: "1", Name: "test-sshkey-1"}, // in use by instance
-			{ID: "2", Name: "test-sshkey-2"}, // in use by instance
-			{ID: "3", Name: "test-sshkey-3"}, // orphan
-			{ID: "4", Name: "test-sshkey-4"}, // orphan
-		}
+	loadbalancers := []sdk.LoadBalancer{{
+		ID:         "1",
+		Name:       "test-loadbalancer-1",
+		ClusterID:  "1", // uses an existing kubernetes cluster
+		FirewallID: "1", // uses an existing firewall
+	}, {
+		ID:   "2",
+		Name: "test-loadbalancer-2",
+	}}
 
-		networks := []sdk.Network{
-			{ID: "1", Name: "test-network-1"}, // in use by instance
-			{ID: "2", Name: "test-network-2"}, // in use by volume
-			{ID: "3", Name: "test-network-3"}, // in use by instance
-			{ID: "4", Name: "test-network-4"}, // in use by volume
-			{ID: "5", Name: "test-network-5"}, // orphan
-			{ID: "6", Name: "test-network-6"}, // in use by volume
-		}
+	objectstores := []sdk.ObjectStore{{
+		ID:          "1",
+		Name:        "test-objectstore-1",
+		Credentials: sdk.ObjectStoreCredential{ID: "1"}, // uses an existing object store credential
+	}, {
+		ID:   "2",
+		Name: "test-objectstore-2",
+	}}
 
-		firewalls := []sdk.Firewall{
-			{ID: "1", Name: "test-firewall-1"}, // in use by instance
-			{ID: "2", Name: "test-firewall-2"}, // orphan
-			{ID: "3", Name: "test-firewall-3"}, // orphan
-			{ID: "4", Name: "test-firewall-4"}, // orphan
-		}
+	objectstorecreds := []sdk.ObjectStoreCredential{{
+		ID:   "1",
+		Name: "test-objectstore-credential-1",
+	}, {
+		ID:   "2",
+		Name: "test-objectstore-credential-2",
+	}}
 
-		volumes := []sdk.Volume{
-			{ID: "1", Name: "test-volume-1", Status: "attached", InstanceID: "1", NetworkID: "2"}, // in use by instance
-			{ID: "2", Name: "test-volume-2", Status: "attached", InstanceID: "1", NetworkID: "4"}, // in use by instance
-			{ID: "3", Name: "test-volume-3"}, // orphan
-			{ID: "4", Name: "test-volume-4"}, // orphan
-			{ID: "5", Name: "test-volume-5", Status: "attached", InstanceID: "3", NetworkID: "6"}, // in use by instance
-			{ID: "6", Name: "test-volume-6"}, // orphan
-		}
+	sshkeys := []sdk.SSHKey{{
+		ID:   "1",
+		Name: "test-sshkey-1",
+	}, {
+		ID:   "2",
+		Name: "test-sshkey-2",
+	}}
 
-		lbs := []sdk.LoadBalancer{
-			{ID: "1", Name: "test-lb-1", ClusterID: "1"},  // in use by k8s cluster
-			{ID: "2", Name: "test-lb-2", ClusterID: "1"},  // in use by k8s cluster
-			{ID: "3", Name: "test-lb-3"},                  // orphan
-			{ID: "4", Name: "test-lb-4", FirewallID: "1"}, // in use by firewall
-			{ID: "5", Name: "test-lb-5", FirewallID: "1"}, // in use by firewall
-			{ID: "6", Name: "test-lb-6"},
-			{ID: "7", Name: "test-lb-7"},
-		}
+	networks := []sdk.Network{{
+		ID:    "1",
+		Name:  "cust-test-network-1-219873hudsf",
+		Label: "test-network-1",
+	}, {
+		ID:    "2",
+		Name:  "cust-test-network-2-894359435jk",
+		Label: "test-network-2",
+	}}
 
-		objstorecreds := []sdk.ObjectStoreCredential{
-			{ID: "1", Name: "test-objstore-cred-1"}, // in use by objstore 1
-			{ID: "2", Name: "test-objstore-cred-2"}, // in use by objstore 2
-			{ID: "3", Name: "test-objstore-cred-3"}, // orphan
-			{ID: "4", Name: "test-objstore-cred-4"}, // orphan
-			{ID: "5", Name: "test-objstore-cred-5"}, // in use by objstore 5
-			{ID: "6", Name: "test-objstore-cred-6"}, // orphan
-		}
+	firewalls := []sdk.Firewall{{
+		ID:                "1",
+		Name:              "test-firewall-1",
+		ClusterCount:      1,   // attached to an existing kubernetes cluster
+		InstanceCount:     6,   // attached to existing instances
+		LoadBalancerCount: 2,   // attached to existing load balancers
+		NetworkID:         "1", // uses an existing network
+	}, {
+		ID:   "2",
+		Name: "test-firewall-2",
+	}}
 
-		objstores := []sdk.ObjectStore{
-			{ID: "1", Name: "test-objstore-1", Credentials: objstorecreds[1]}, // in use by objstore
-			{ID: "2", Name: "test-objstore-2", Credentials: objstorecreds[2]}, // in use by objstore
-			{ID: "3", Name: "test-objstore-3"},
-			{ID: "4", Name: "test-objstore-4"},
-			{ID: "5", Name: "test-objstore-5", Credentials: objstorecreds[5]}, // in use by objstore
-			{ID: "6", Name: "test-objstore-6"},
-		}
+	mock := &mockClient{
+		fnGetInstances:              func(ctx context.Context) ([]sdk.Instance, error) { return instances, nil },
+		fnGetVolumes:                func(ctx context.Context) ([]sdk.Volume, error) { return volumes, nil },
+		fnGetLoadBalancers:          func(ctx context.Context) ([]sdk.LoadBalancer, error) { return loadbalancers, nil },
+		fnGetObjectStores:           func(ctx context.Context) ([]sdk.ObjectStore, error) { return objectstores, nil },
+		fnGetObjectStoreCredentials: func(ctx context.Context) ([]sdk.ObjectStoreCredential, error) { return objectstorecreds, nil },
+		fnGetSSHKeys:                func(ctx context.Context) ([]sdk.SSHKey, error) { return sshkeys, nil },
+		fnGetNetworks:               func(ctx context.Context) ([]sdk.Network, error) { return networks, nil },
+		fnGetFirewalls:              func(ctx context.Context) ([]sdk.Firewall, error) { return firewalls, nil },
+	}
 
-		client := testutils.MockCivo{
-			FnDo: func(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
-				t.Logf("%s %q -> params: %#v", method, location, params)
+	civo := &Civo{
+		client: mock,
+		logger: logger.New(os.Stderr),
+	}
 
-				// Check region in params
-				if params["region"] != region {
-					t.Fatalf("unexpected region: %q", params["region"])
-				}
-
-				// On resource deletions, we return no errors
-				if method == http.MethodDelete {
-					return nil
-				}
-
-				// Ensure we only send GET requests
-				if method != http.MethodGet {
-					t.Fatalf("unexpected method: %q", method)
-				}
-
-				var page, perPage int
-
-				paginated, err := sdk.IsPaginatedResource(location)
-				testutils.AssertNoErrorf(t, err, "resource %q doesn't exist", location)
-
-				if paginated {
-					// ensure paginated resources are handled correctly
-					page = testutils.ParseParamNumber(t, location, params, "page", 1, true)
-					perPage = testutils.ParseParamNumber(t, location, params, "per_page", 100, true)
-				} else {
-					// sanity check: ensure non-paginated resources don't
-					// attempt to send page or per_page parameters
-					if _, ok := params["page"]; ok {
-						t.Fatal("unexpected page parameter")
-					}
-					if _, ok := params["per_page"]; ok {
-						t.Fatal("unexpected per_page parameter")
-					}
-				}
-
-				switch out := output.(type) {
-				case *sdk.PaginatedResponse[sdk.Instance]:
-					res, page, perPage, totalPages := testutils.GetResultsForPage(t, instances, page, perPage)
-					out.Items = res
-					out.Page = page
-					out.PerPage = perPage
-					out.Pages = totalPages
-
-				case *[]sdk.Firewall:
-					testutils.InjectIntoSlice(t, out, firewalls)
-
-				case *[]sdk.Volume:
-					testutils.InjectIntoSlice(t, out, volumes)
-
-				case *[]sdk.Network:
-					testutils.InjectIntoSlice(t, out, networks)
-
-				case *[]sdk.SSHKey:
-					testutils.InjectIntoSlice(t, out, sshkeys)
-
-				case *[]sdk.LoadBalancer:
-					testutils.InjectIntoSlice(t, out, lbs)
-
-				case *sdk.PaginatedResponse[sdk.ObjectStore]:
-					res, page, perPage, totalPages := testutils.GetResultsForPage(t, objstores, page, perPage)
-					out.Items = res
-					out.Page = page
-					out.PerPage = perPage
-					out.Pages = totalPages
-
-				case *sdk.PaginatedResponse[sdk.ObjectStoreCredential]:
-					res, page, perPage, totalPages := testutils.GetResultsForPage(t, objstorecreds, page, perPage)
-					out.Items = res
-					out.Page = page
-					out.PerPage = perPage
-					out.Pages = totalPages
-
-				case nil:
-					// no-op
-
-				default:
-					t.Fatalf("unexpected output type: %T", output)
-				}
-
-				return nil
-			},
-
-			FnGetRegion: func() string {
-				return region
-			},
-		}
-
-		civo := &Civo{
-			client: &client,
-			nuke:   true,
-			region: region,
-			token:  token,
-			logger: logger.None,
-		}
-
-		err := civo.NukeOrphanedResources(context.Background())
-		testutils.AssertNoError(t, err)
-	})
+	err := civo.NukeOrphanedResources(context.Background())
+	testutils.AssertNoErrorf(t, err, "expected no error when calling NukeOrphanedResources, got %v", err)
 }

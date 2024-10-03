@@ -3,7 +3,6 @@ package testutils
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -46,11 +45,20 @@ func AssertNoErrorf(t *testing.T, err error, format string, args ...interface{})
 	}
 }
 
+// AssertError is a helper function to check if an error is not nil.
+func AssertErrorf(t *testing.T, err error, format string, args ...interface{}) {
+	t.Helper()
+
+	if err == nil {
+		t.Fatalf(format, args...)
+	}
+}
+
 // AssertErrorEqual is a helper function to compare two errors.
 func AssertErrorEqual(t *testing.T, expected error, got error) {
 	t.Helper()
 
-	if !errors.Is(expected, got) {
+	if !errors.Is(got, expected) {
 		t.Fatalf("expected error to be \"%#v\", got \"%#v\"", expected, got)
 	}
 }
@@ -66,7 +74,7 @@ type MockCivo struct {
 // Do is a mock implementation of the Civoer interface.
 func (m *MockCivo) Do(ctx context.Context, location, method string, output interface{}, params map[string]string) error {
 	if m.FnDo == nil {
-		return fmt.Errorf("method \"do\" not implemented")
+		return errors.New("method \"do\" not implemented")
 	}
 
 	return m.FnDo(ctx, location, method, output, params)
@@ -106,7 +114,7 @@ func (m *MockCivo) GetEndpoint() string {
 func ParseParamNumber(t *testing.T, location string, params map[string]string, key string, defval int, shouldFail bool) int {
 	t.Helper()
 
-	page, ok := params["page"]
+	page, ok := params[key]
 	if !ok {
 		if shouldFail {
 			t.Fatalf("expected page to be set for endpoint: %q", location)
@@ -122,41 +130,6 @@ func ParseParamNumber(t *testing.T, location string, params map[string]string, k
 	}
 
 	return pageNumber
-}
-
-// GetResultsForPage is a helper function to get results for a specific page.
-// It works by providing a list of resources in a slice (called "results") and
-// then specifying the page and perPage values. The function will return a
-// slice of resources for the current page and the total number of pages.
-// WARNING: Since Civo returns page 1 for any page that overflows, the function
-// will return the first page if the requested page is greater than the total
-// number of pages. Consider reading the `currentPage`, `itemsPerPage`, and
-// `totalPages` values to determine if the page is valid.
-func GetResultsForPage[T any](t *testing.T, results []T, page, perPage int) (items []T, currentPage, itemsPerPage, totalPages int) {
-	t.Helper()
-
-	totalItems := len(results)
-	totalPages = (totalItems + perPage - 1) / perPage
-
-	// Civo-ism: Return the first page if the requested page is greater than the
-	// total number of pages.
-	if page < 1 || page > totalPages {
-		page = 1
-	}
-
-	// Calculate the start and end index for the current page items.
-	start := (page - 1) * perPage
-	end := start + perPage
-	if end > totalItems {
-		end = totalItems
-	}
-
-	// Create a slice of items for the current page, use append to prevent
-	// the original slice from being carried around.
-	items = append([]T{}, results[start:end]...)
-	currentPage = page
-	itemsPerPage = perPage
-	return
 }
 
 // InjectIntoSlice is a helper function to inject a slice into another slice.

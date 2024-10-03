@@ -1,11 +1,11 @@
 package civo
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/konstructio/dropkick/internal/civo/sdk"
@@ -14,9 +14,24 @@ import (
 
 const civoAPIURL = "https://api.civo.com"
 
+// Client is the interface that wraps the basic Civo API client methods.
+type Client interface {
+	GetInstances(ctx context.Context) ([]sdk.Instance, error)
+	GetFirewalls(ctx context.Context) ([]sdk.Firewall, error)
+	GetVolumes(ctx context.Context) ([]sdk.Volume, error)
+	GetKubernetesClusters(ctx context.Context) ([]sdk.KubernetesCluster, error)
+	GetNetworks(ctx context.Context) ([]sdk.Network, error)
+	GetObjectStores(ctx context.Context) ([]sdk.ObjectStore, error)
+	GetObjectStoreCredentials(ctx context.Context) ([]sdk.ObjectStoreCredential, error)
+	GetLoadBalancers(ctx context.Context) ([]sdk.LoadBalancer, error)
+	GetSSHKeys(ctx context.Context) ([]sdk.SSHKey, error)
+	Delete(ctx context.Context, resource sdk.APIResource) error
+	Each(ctx context.Context, v sdk.APIResource, iterator func(sdk.APIResource) error) error
+}
+
 // Civo is a client for the Civo API.
 type Civo struct {
-	client     sdk.Civoer   // The underlying Civo API client.
+	client     Client       // The underlying Civo API client.
 	nuke       bool         // Whether to nuke resources.
 	region     string       // The region for API requests.
 	nameFilter string       // If set, only resources with a name containing this string will be deleted.
@@ -64,19 +79,6 @@ func WithNuke(nuke bool) Option {
 func WithNameFilter(nameFilter string) Option {
 	return func(c *Civo) error {
 		c.nameFilter = nameFilter
-		return nil
-	}
-}
-
-// WithAPIURL sets the API URL for a Civo.
-func WithAPIURL(apiURL string) Option {
-	return func(c *Civo) error {
-		u, err := url.Parse(apiURL)
-		if err != nil {
-			return fmt.Errorf("invalid API URL: %w", err)
-		}
-
-		c.apiURL = u.String()
 		return nil
 	}
 }

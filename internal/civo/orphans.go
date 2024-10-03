@@ -19,14 +19,14 @@ import (
 func (c *Civo) NukeOrphanedResources(ctx context.Context) error {
 	// fetch all nodes first, we'll need them to check for orphaned resources
 	c.logger.Infof("fetching all instances")
-	nodes, err := sdk.GetAll[sdk.Instance](ctx, c.client)
+	nodes, err := c.client.GetInstances(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch instances: %w", err)
 	}
 
 	// fetch also all volumes to check for networks connected to them
 	c.logger.Infof("fetching all volumes")
-	volumes, err := sdk.GetAll[sdk.Volume](ctx, c.client)
+	volumes, err := c.client.GetVolumes(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch volumes: %w", err)
 	}
@@ -90,6 +90,18 @@ func (c *Civo) NukeOrphanedResources(ctx context.Context) error {
 	return nil
 }
 
+// nukeSlice deletes all resources in the provided slice. It returns an error if
+// the deletion process encounters any issues.
+func nukeSlice[T sdk.Resource](ctx context.Context, c *Civo, resources []T) error {
+	for _, resource := range resources {
+		if err := c.deleteIterator(ctx)(resource); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // getOrphanedObjectStoreCredentials fetches all object store then the object
 // store credentials and compares them against each other. If a credential is
 // not used by any store, it is considered orphaned. It returns an error if the
@@ -97,12 +109,12 @@ func (c *Civo) NukeOrphanedResources(ctx context.Context) error {
 func (c *Civo) getOrphanedObjectStoreCredentials(ctx context.Context) ([]sdk.ObjectStoreCredential, error) {
 	c.logger.Infof("listing object stores")
 
-	objectStores, err := sdk.GetAll[sdk.ObjectStore](ctx, c.client)
+	objectStores, err := c.client.GetObjectStores(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list object stores: %w", err)
 	}
 
-	credentials, err := sdk.GetAll[sdk.ObjectStoreCredential](ctx, c.client)
+	credentials, err := c.client.GetObjectStoreCredentials(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list object store credentials: %w", err)
 	}
@@ -136,7 +148,7 @@ func (c *Civo) getOrphanedObjectStoreCredentials(ctx context.Context) ([]sdk.Obj
 func (c *Civo) getOrphanedLoadBalancers(ctx context.Context) ([]sdk.LoadBalancer, error) {
 	c.logger.Infof("listing load balancers")
 
-	lbs, err := sdk.GetAll[sdk.LoadBalancer](ctx, c.client)
+	lbs, err := c.client.GetLoadBalancers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list load balancers: %w", err)
 	}
@@ -188,7 +200,7 @@ func (c *Civo) getOrphanedVolumes(volumes []sdk.Volume) []sdk.Volume {
 func (c *Civo) getOrphanedSSHKeys(ctx context.Context, nodes []sdk.Instance) ([]sdk.SSHKey, error) {
 	c.logger.Infof("listing SSH keys")
 
-	keys, err := sdk.GetAll[sdk.SSHKey](ctx, c.client)
+	keys, err := c.client.GetSSHKeys(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list SSH keys: %w", err)
 	}
@@ -223,7 +235,7 @@ func (c *Civo) getOrphanedSSHKeys(ctx context.Context, nodes []sdk.Instance) ([]
 func (c *Civo) getOrphanedNetworks(ctx context.Context, nodes []sdk.Instance, volumes []sdk.Volume) ([]sdk.Network, error) {
 	c.logger.Infof("listing networks")
 
-	networks, err := sdk.GetAll[sdk.Network](ctx, c.client)
+	networks, err := c.client.GetNetworks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list networks: %w", err)
 	}
@@ -267,7 +279,7 @@ func (c *Civo) getOrphanedNetworks(ctx context.Context, nodes []sdk.Instance, vo
 func (c *Civo) getOrphanedFirewalls(ctx context.Context) ([]sdk.Firewall, error) {
 	c.logger.Infof("listing firewalls")
 
-	firewalls, err := sdk.GetAll[sdk.Firewall](ctx, c.client)
+	firewalls, err := c.client.GetFirewalls(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list firewalls: %w", err)
 	}

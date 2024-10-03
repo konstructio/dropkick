@@ -6,40 +6,94 @@ import (
 	"strconv"
 )
 
+// GetInstances returns all instances.
 func (c *Client) GetInstances(ctx context.Context) ([]Instance, error) {
 	return getAll[Instance](ctx, c)
 }
 
+// GetFirewalls returns all firewalls.
 func (c *Client) GetFirewalls(ctx context.Context) ([]Firewall, error) {
 	return getAll[Firewall](ctx, c)
 }
 
+// GetVolumes returns all volumes.
 func (c *Client) GetVolumes(ctx context.Context) ([]Volume, error) {
 	return getAll[Volume](ctx, c)
 }
 
+// GetKubernetesClusters returns all Kubernetes clusters.
 func (c *Client) GetKubernetesClusters(ctx context.Context) ([]KubernetesCluster, error) {
 	return getAll[KubernetesCluster](ctx, c)
 }
 
+// GetNetworks returns all networks.
 func (c *Client) GetNetworks(ctx context.Context) ([]Network, error) {
 	return getAll[Network](ctx, c)
 }
 
+// GetObjectStores returns all object stores.
 func (c *Client) GetObjectStores(ctx context.Context) ([]ObjectStore, error) {
 	return getAll[ObjectStore](ctx, c)
 }
 
+// GetObjectStoreCredentials returns all object store credentials.
 func (c *Client) GetObjectStoreCredentials(ctx context.Context) ([]ObjectStoreCredential, error) {
 	return getAll[ObjectStoreCredential](ctx, c)
 }
 
+// GetLoadBalancers returns all load balancers.
 func (c *Client) GetLoadBalancers(ctx context.Context) ([]LoadBalancer, error) {
 	return getAll[LoadBalancer](ctx, c)
 }
 
+// GetSSHKeys returns all SSH keys.
 func (c *Client) GetSSHKeys(ctx context.Context) ([]SSHKey, error) {
 	return getAll[SSHKey](ctx, c)
+}
+
+// Each iterates over all resources of a given type.
+func (c *Client) Each(ctx context.Context, v APIResource, iterator func(APIResource) error) error {
+	switch r := v.(type) {
+	case Instance:
+		return each(ctx, c, func(i Instance) error { return iterator(i) })
+	case Firewall:
+		return each(ctx, c, func(f Firewall) error { return iterator(f) })
+	case Volume:
+		return each(ctx, c, func(v Volume) error { return iterator(v) })
+	case KubernetesCluster:
+		return each(ctx, c, func(k KubernetesCluster) error { return iterator(k) })
+	case Network:
+		return each(ctx, c, func(n Network) error { return iterator(n) })
+	case ObjectStore:
+		return each(ctx, c, func(o ObjectStore) error { return iterator(o) })
+	case ObjectStoreCredential:
+		return each(ctx, c, func(o ObjectStoreCredential) error { return iterator(o) })
+	case LoadBalancer:
+		return each(ctx, c, func(l LoadBalancer) error { return iterator(l) })
+	case SSHKey:
+		return each(ctx, c, func(s SSHKey) error { return iterator(s) })
+	default:
+		return fmt.Errorf("unsupported resource type: %T", r)
+	}
+}
+
+// each is a helper function to iterate over all resources of a given type.
+func each[T Resource](ctx context.Context, c Civoer, fn func(T) error) error {
+	var obj T
+
+	res, err := getAll[T](ctx, c)
+	if err != nil {
+		return fmt.Errorf("unable to list %s: %w", obj.GetResourceType(), err)
+	}
+
+	for i := range res {
+		err := fn(res[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // PaginatedResponse is a helper struct to unmarshal paginated responses from
