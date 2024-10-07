@@ -128,7 +128,8 @@ func (c *Civo) getOrphanedObjectStoreCredentials(ctx context.Context) ([]sdk.Obj
 
 		// iterate through the object stores finding if they use the current credential
 		for _, objectStore := range objectStores {
-			if objectStore.Credentials.ID == credential.ID {
+			// on a GET request for object stores, only
+			if objectStore.Credentials.ID == credential.CredentialID {
 				c.logger.Warnf("skipping object store credential %q: it is associated with the object store with ID %q", credential.Name, objectStore.ID)
 				found = true
 				break
@@ -243,14 +244,17 @@ func (c *Civo) getOrphanedNetworks(ctx context.Context, nodes []sdk.Instance, vo
 	// iterate over all networks and check if they are associated with any nodes
 	orphanedNetworks := make([]sdk.Network, 0, len(networks))
 	for _, network := range networks {
-		var found bool
+		// check if network name is "default", if so, skip it
+		if network.Default {
+			c.logger.Warnf("skipping network %q: it is the default network", network.Name)
+			continue
+		}
 
 		// iterate through the nodes finding if they use the current network
 		for _, node := range nodes {
 			if node.NetworkID == network.ID {
 				c.logger.Warnf("skipping network %q: it is associated with the node instance with ID %q", network.Name, node.ID)
-				found = true
-				break
+				continue
 			}
 		}
 
@@ -258,15 +262,13 @@ func (c *Civo) getOrphanedNetworks(ctx context.Context, nodes []sdk.Instance, vo
 		for _, volume := range volumes {
 			if volume.NetworkID == network.ID {
 				c.logger.Warnf("skipping network %q: it is associated with the volume with ID %q", network.Name, volume.ID)
-				found = true
-				break
+				continue
 			}
 		}
 
-		if !found {
-			c.logger.Infof("found orphaned network %q - ID: %q", network.Name, network.ID)
-			orphanedNetworks = append(orphanedNetworks, network)
-		}
+		// if we get to this point, none of the "continues" were hit, so the network is orphaned
+		c.logger.Infof("found orphaned network %q - ID: %q", network.Name, network.ID)
+		orphanedNetworks = append(orphanedNetworks, network)
 	}
 
 	c.logger.Infof("found %d networks, %d of which are orphaned", len(networks), len(orphanedNetworks))

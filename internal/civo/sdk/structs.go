@@ -108,10 +108,11 @@ func (k KubernetesCluster) GetResourceType() string { return "kubernetes cluster
 
 // Network is a Civo network.
 type Network struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Label  string `json:"label"`
-	Status string `json:"status"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Label   string `json:"label"`
+	Status  string `json:"status"`
+	Default bool   `json:"default"`
 }
 
 func (n Network) GetID() string           { return n.ID }           // GetID returns the ID of the network.
@@ -136,9 +137,10 @@ func (o ObjectStore) GetResourceType() string { return "object store" }     // G
 
 // ObjectStoreCredential is a Civo object store credential.
 type ObjectStoreCredential struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID           string `json:"id"`
+	CredentialID string `json:"credential_id"` // only used when pulled via objectstore
+	Name         string `json:"name"`
+	Status       string `json:"status"`
 }
 
 func (o ObjectStoreCredential) GetID() string           { return o.ID }                          // GetID returns the ID of the object store credential.
