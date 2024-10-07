@@ -2,7 +2,9 @@ package sdk
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/konstructio/dropkick/internal/civo/sdk/json"
 )
@@ -56,8 +58,22 @@ func WithRegion(region string) Option {
 
 // New creates a new Civo client.
 func New(opts ...Option) (*Client, error) {
+	// Defining a baseline timeout for the client.
+	timeoutLimit := 30 * time.Second
+
 	c := &Client{
-		client: http.DefaultClient,
+		// Setting an opinionated client with a 30-second timeout.
+		client: &http.Client{
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout:   timeoutLimit, // how long to wait for the connection to be established
+					KeepAlive: timeoutLimit, // how long to keep the connections open
+				}).DialContext,
+				TLSHandshakeTimeout: 10 * time.Second, // how long to wait for the TLS handshake to complete
+				IdleConnTimeout:     timeoutLimit,     // how long to keep idle connections open
+			},
+			Timeout: timeoutLimit * 2, // how long to wait for the request to complete
+		},
 	}
 
 	for _, opt := range opts {
