@@ -3,200 +3,118 @@ package civo
 import (
 	"context"
 	"fmt"
-	"io"
+	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 
-	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/civo/sdk"
 	"github.com/konstructio/dropkick/internal/logger"
 )
 
-type errNotImplemented struct {
-	funcName string
+// mockClient is a mock implementation of the Client interface.
+type mockClient struct {
+	fnGetInstances              func(ctx context.Context) ([]sdk.Instance, error)
+	fnGetFirewalls              func(ctx context.Context) ([]sdk.Firewall, error)
+	fnGetVolumes                func(ctx context.Context) ([]sdk.Volume, error)
+	fnGetKubernetesClusters     func(ctx context.Context) ([]sdk.KubernetesCluster, error)
+	fnGetNetworks               func(ctx context.Context) ([]sdk.Network, error)
+	fnGetObjectStores           func(ctx context.Context) ([]sdk.ObjectStore, error)
+	fnGetObjectStoreCredentials func(ctx context.Context) ([]sdk.ObjectStoreCredential, error)
+	fnGetLoadBalancers          func(ctx context.Context) ([]sdk.LoadBalancer, error)
+	fnGetSSHKeys                func(ctx context.Context) ([]sdk.SSHKey, error)
+	fnDelete                    func(ctx context.Context, resource sdk.APIResource) error
+	fnEach                      func(ctx context.Context, v sdk.APIResource, iterator func(sdk.APIResource) error) error
 }
 
-func (e *errNotImplemented) Error() string {
-	return fmt.Sprintf("%q is not implemented", e.funcName)
+// Ensure mockClient implements the Client interface.
+var _ Client = &mockClient{}
+
+func (m *mockClient) GetInstances(ctx context.Context) ([]sdk.Instance, error) {
+	return m.fnGetInstances(ctx)
 }
 
-type mockCivoClient struct {
-	FnListInstances               func(page int, perPage int) (*civogo.PaginatedInstanceList, error)
-	FnListSSHKeys                 func() ([]civogo.SSHKey, error)
-	FnDeleteSSHKey                func(id string) (*civogo.SimpleResponse, error)
-	FnListVolumes                 func() ([]civogo.Volume, error)
-	FnDeleteVolume                func(id string) (*civogo.SimpleResponse, error)
-	FnListKubernetesClusters      func() (*civogo.PaginatedKubernetesClusters, error)
-	FnDeleteKubernetesCluster     func(id string) (*civogo.SimpleResponse, error)
-	FnListVolumesForCluster       func(clusterID string) ([]civogo.Volume, error)
-	FnListNetworks                func() ([]civogo.Network, error)
-	FnFindNetwork                 func(search string) (*civogo.Network, error)
-	FnDeleteNetwork               func(id string) (*civogo.SimpleResponse, error)
-	FnListObjectStoreCredentials  func() (*civogo.PaginatedObjectStoreCredentials, error)
-	FnGetObjectStoreCredential    func(id string) (*civogo.ObjectStoreCredential, error)
-	FnDeleteObjectStoreCredential func(id string) (*civogo.SimpleResponse, error)
-	FnListObjectStores            func() (*civogo.PaginatedObjectstores, error)
-	FnDeleteObjectStore           func(id string) (*civogo.SimpleResponse, error)
-	FnListFirewalls               func() ([]civogo.Firewall, error)
-	FnDeleteFirewall              func(id string) (*civogo.SimpleResponse, error)
+func (m *mockClient) GetFirewalls(ctx context.Context) ([]sdk.Firewall, error) {
+	return m.fnGetFirewalls(ctx)
 }
 
-func (m *mockCivoClient) ListInstances(page int, perPage int) (*civogo.PaginatedInstanceList, error) {
-	if m.FnListInstances == nil {
-		return nil, &errNotImplemented{funcName: "ListInstances"}
+func (m *mockClient) GetVolumes(ctx context.Context) ([]sdk.Volume, error) {
+	return m.fnGetVolumes(ctx)
+}
+
+func (m *mockClient) GetKubernetesClusters(ctx context.Context) ([]sdk.KubernetesCluster, error) {
+	return m.fnGetKubernetesClusters(ctx)
+}
+
+func (m *mockClient) GetNetworks(ctx context.Context) ([]sdk.Network, error) {
+	return m.fnGetNetworks(ctx)
+}
+
+func (m *mockClient) GetObjectStores(ctx context.Context) ([]sdk.ObjectStore, error) {
+	return m.fnGetObjectStores(ctx)
+}
+
+func (m *mockClient) GetObjectStoreCredentials(ctx context.Context) ([]sdk.ObjectStoreCredential, error) {
+	return m.fnGetObjectStoreCredentials(ctx)
+}
+
+func (m *mockClient) GetLoadBalancers(ctx context.Context) ([]sdk.LoadBalancer, error) {
+	return m.fnGetLoadBalancers(ctx)
+}
+
+func (m *mockClient) GetSSHKeys(ctx context.Context) ([]sdk.SSHKey, error) {
+	return m.fnGetSSHKeys(ctx)
+}
+
+func (m *mockClient) Delete(ctx context.Context, resource sdk.APIResource) error {
+	return m.fnDelete(ctx, resource)
+}
+
+func (m *mockClient) Each(ctx context.Context, v sdk.APIResource, iterator func(sdk.APIResource) error) error {
+	return m.fnEach(ctx, v, iterator)
+}
+
+// runEach runs the given function for each item in the list.
+func runEach[T sdk.Resource](list []T, fn func(sdk.APIResource) error) error {
+	for _, item := range list {
+		if err := fn(item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// generator generates a list of resources of type sdk.Resource, which are
+// Civo-specific resources.
+func generator[T sdk.Resource](n int) []T {
+	list := make([]T, n)
+
+	for i := 0; i < n; i++ {
+		resType := reflect.TypeOf((*T)(nil)).Elem()
+		resValue := reflect.New(resType).Elem()
+
+		// lowercase type name
+		typeName := strings.ToLower(resType.Name())
+
+		// set the ID field
+		if idField := resValue.FieldByName("ID"); idField.IsValid() && idField.CanSet() {
+			idField.SetString("id-" + strconv.Itoa(i+1))
+		}
+
+		// set the Name field
+		if nameField := resValue.FieldByName("Name"); nameField.IsValid() && nameField.CanSet() {
+			nameField.SetString(typeName + "-" + strconv.Itoa(i+1))
+		}
+
+		// for firewalls, set the label as the name
+		if labelField := resValue.FieldByName("Label"); labelField.IsValid() && labelField.CanSet() {
+			labelField.SetString(typeName + "-" + strconv.Itoa(i+1))
+		}
+
+		list[i] = resValue.Interface().(T)
 	}
 
-	return m.FnListInstances(page, perPage)
-}
-
-func (m *mockCivoClient) ListSSHKeys() ([]civogo.SSHKey, error) {
-	if m.FnListSSHKeys == nil {
-		return nil, &errNotImplemented{funcName: "ListSSHKeys"}
-	}
-
-	return m.FnListSSHKeys()
-}
-
-func (m *mockCivoClient) DeleteSSHKey(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteSSHKey == nil {
-		return nil, &errNotImplemented{funcName: "DeleteSSHKey"}
-	}
-
-	return m.FnDeleteSSHKey(id)
-}
-
-func (m *mockCivoClient) ListVolumes() ([]civogo.Volume, error) {
-	if m.FnListVolumes == nil {
-		return nil, &errNotImplemented{funcName: "ListVolumes"}
-	}
-
-	return m.FnListVolumes()
-}
-
-func (m *mockCivoClient) DeleteVolume(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteVolume == nil {
-		return nil, &errNotImplemented{funcName: "DeleteVolume"}
-	}
-
-	return m.FnDeleteVolume(id)
-}
-
-func (m *mockCivoClient) ListKubernetesClusters() (*civogo.PaginatedKubernetesClusters, error) {
-	if m.FnListKubernetesClusters == nil {
-		return nil, &errNotImplemented{funcName: "ListKubernetesClusters"}
-	}
-
-	return m.FnListKubernetesClusters()
-}
-
-func (m *mockCivoClient) DeleteKubernetesCluster(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteKubernetesCluster == nil {
-		return nil, &errNotImplemented{funcName: "DeleteKubernetesCluster"}
-	}
-
-	return m.FnDeleteKubernetesCluster(id)
-}
-
-func (m *mockCivoClient) ListVolumesForCluster(clusterID string) ([]civogo.Volume, error) {
-	if m.FnListVolumesForCluster == nil {
-		return nil, &errNotImplemented{funcName: "ListVolumesForCluster"}
-	}
-
-	return m.FnListVolumesForCluster(clusterID)
-}
-
-func (m *mockCivoClient) ListNetworks() ([]civogo.Network, error) {
-	if m.FnListNetworks == nil {
-		return nil, &errNotImplemented{funcName: "ListNetworks"}
-	}
-
-	return m.FnListNetworks()
-}
-
-func (m *mockCivoClient) FindNetwork(search string) (*civogo.Network, error) {
-	if m.FnFindNetwork == nil {
-		return nil, &errNotImplemented{funcName: "FindNetwork"}
-	}
-
-	return m.FnFindNetwork(search)
-}
-
-func (m *mockCivoClient) DeleteNetwork(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteNetwork == nil {
-		return nil, &errNotImplemented{funcName: "DeleteNetwork"}
-	}
-
-	return m.FnDeleteNetwork(id)
-}
-
-func (m *mockCivoClient) ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error) {
-	if m.FnListObjectStoreCredentials == nil {
-		return nil, &errNotImplemented{funcName: "ListObjectStoreCredentials"}
-	}
-
-	return m.FnListObjectStoreCredentials()
-}
-
-func (m *mockCivoClient) GetObjectStoreCredential(id string) (*civogo.ObjectStoreCredential, error) {
-	if m.FnGetObjectStoreCredential == nil {
-		return nil, &errNotImplemented{funcName: "GetObjectStoreCredential"}
-	}
-
-	return m.FnGetObjectStoreCredential(id)
-}
-
-func (m *mockCivoClient) DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteObjectStoreCredential == nil {
-		return nil, &errNotImplemented{funcName: "DeleteObjectStoreCredential"}
-	}
-
-	return m.FnDeleteObjectStoreCredential(id)
-}
-
-func (m *mockCivoClient) ListObjectStores() (*civogo.PaginatedObjectstores, error) {
-	if m.FnListObjectStores == nil {
-		return nil, &errNotImplemented{funcName: "ListObjectStores"}
-	}
-
-	return m.FnListObjectStores()
-}
-
-func (m *mockCivoClient) DeleteObjectStore(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteObjectStore == nil {
-		return nil, &errNotImplemented{funcName: "DeleteObjectStore"}
-	}
-
-	return m.FnDeleteObjectStore(id)
-}
-
-func (m *mockCivoClient) ListFirewalls() ([]civogo.Firewall, error) {
-	if m.FnListFirewalls == nil {
-		return nil, &errNotImplemented{funcName: "ListFirewalls"}
-	}
-
-	return m.FnListFirewalls()
-}
-
-func (m *mockCivoClient) DeleteFirewall(id string) (*civogo.SimpleResponse, error) {
-	if m.FnDeleteFirewall == nil {
-		return nil, &errNotImplemented{funcName: "DeleteFirewall"}
-	}
-
-	return m.FnDeleteFirewall(id)
-}
-
-type mockLogger struct {
-	output io.Writer
-}
-
-func (m *mockLogger) Infof(format string, args ...interface{}) {
-	fmt.Fprintf(m.output, "[INFO] "+format+"\n", args...)
-}
-
-func (m *mockLogger) Errorf(format string, args ...interface{}) {
-	fmt.Fprintf(m.output, "[ERROR] "+format+"\n", args...)
-}
-
-func (m *mockLogger) Warnf(format string, args ...interface{}) {
-	fmt.Fprintf(m.output, "[WARN] "+format+"\n", args...)
+	return list
 }
 
 func TestNew(t *testing.T) {
@@ -205,7 +123,6 @@ func TestNew(t *testing.T) {
 		Opts       []Option
 		Token      string
 		Region     string
-		APIURL     string
 		Context    context.Context
 		Logger     *logger.Logger
 		Nuke       bool
@@ -216,7 +133,6 @@ func TestNew(t *testing.T) {
 			Name:       "all good",
 			Token:      "token",
 			Region:     "region",
-			APIURL:     "https://api.example.com",
 			Context:    context.Background(),
 			Logger:     logger.None,
 			Nuke:       true,
@@ -241,13 +157,6 @@ func TestNew(t *testing.T) {
 			Name:    "missing region",
 			Token:   "token",
 			Region:  "",
-			WantErr: true,
-		},
-		{
-			Name:    "impossible client using invalid URL",
-			Token:   "token",
-			Region:  "region",
-			APIURL:  "#@$%^&*",
 			WantErr: true,
 		},
 		{
@@ -276,14 +185,6 @@ func TestNew(t *testing.T) {
 
 			if tc.Region != "" {
 				opts = append(opts, WithRegion(tc.Region))
-			}
-
-			if tc.APIURL != "" {
-				opts = append(opts, WithAPIURL(tc.APIURL))
-			}
-
-			if tc.Context != nil {
-				opts = append(opts, WithContext(tc.Context))
 			}
 
 			if tc.Logger != nil {
@@ -325,25 +226,6 @@ func TestNew(t *testing.T) {
 			if client.region != tc.Region {
 				tt.Fatalf("expected client.region to be %q, got %q", tc.Region, client.region)
 			}
-
-			if tc.APIURL == "" && client.apiURL != civoAPIURL {
-				tt.Fatalf("expected client.apiURL to be %q, got %q", civoAPIURL, client.apiURL)
-			}
-
-			if tc.APIURL != "" && client.apiURL != tc.APIURL {
-				tt.Fatalf("expected client.apiURL to be %q, got %q", tc.APIURL, client.apiURL)
-			}
-
-			if tc.Context == nil && client.context != context.Background() {
-				tt.Fatalf("expected client.context to be %v, got %v", context.Background(), client.context)
-			}
-
-			if tc.Context != nil && client.context != tc.Context {
-				tt.Fatalf("expected client.context to be %v, got %v", tc.Context, client.context)
-			}
-
-			t.Logf("client.logger: %#v", client.logger)
-			t.Logf("tc.Logger: %#v", tc.Logger)
 
 			if tc.Logger == nil && client.logger != logger.None {
 				tt.Fatalf("expected client.logger to be the default logger, got: %#v", client.logger)

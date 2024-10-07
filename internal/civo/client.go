@@ -4,23 +4,40 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
 
-	"github.com/civo/civogo"
+	"github.com/konstructio/dropkick/internal/civo/sdk"
 	"github.com/konstructio/dropkick/internal/logger"
 )
 
 const civoAPIURL = "https://api.civo.com"
 
+// Client is the interface that wraps the basic Civo API client methods.
+type Client interface {
+	GetInstances(ctx context.Context) ([]sdk.Instance, error)
+	GetFirewalls(ctx context.Context) ([]sdk.Firewall, error)
+	GetVolumes(ctx context.Context) ([]sdk.Volume, error)
+	GetKubernetesClusters(ctx context.Context) ([]sdk.KubernetesCluster, error)
+	GetNetworks(ctx context.Context) ([]sdk.Network, error)
+	GetObjectStores(ctx context.Context) ([]sdk.ObjectStore, error)
+	GetObjectStoreCredentials(ctx context.Context) ([]sdk.ObjectStoreCredential, error)
+	GetLoadBalancers(ctx context.Context) ([]sdk.LoadBalancer, error)
+	GetSSHKeys(ctx context.Context) ([]sdk.SSHKey, error)
+	Delete(ctx context.Context, resource sdk.APIResource) error
+	Each(ctx context.Context, v sdk.APIResource, iterator func(sdk.APIResource) error) error
+}
+
 // Civo is a client for the Civo API.
 type Civo struct {
-	client     client          // The underlying Civo API client.
-	context    context.Context // The context for API requests.
-	nuke       bool            // Whether to nuke resources.
-	region     string          // The region for API requests.
-	nameFilter string          // If set, only resources with a name containing this string will be deleted.
-	token      string          // The API token.
-	logger     customLogger    // The logger instance.
-	apiURL     string          // The URL for the Civo API.
+	client     Client       // The underlying Civo API client.
+	nuke       bool         // Whether to nuke resources.
+	region     string       // The region for API requests.
+	nameFilter string       // If set, only resources with a name containing this string will be deleted.
+	token      string       // The API token.
+	logger     customLogger // The logger instance.
+	apiURL     string       // The URL for the Civo API.
 }
 
 // Option is a function that configures a Civo.
@@ -58,14 +75,6 @@ func WithNuke(nuke bool) Option {
 	}
 }
 
-// WithContext sets the context for a Civo.
-func WithContext(ctx context.Context) Option {
-	return func(c *Civo) error {
-		c.context = ctx
-		return nil
-	}
-}
-
 // WithNameFilter sets the name filter for a Civo.
 func WithNameFilter(nameFilter string) Option {
 	return func(c *Civo) error {
@@ -74,47 +83,37 @@ func WithNameFilter(nameFilter string) Option {
 	}
 }
 
-// WithAPIURL sets the API URL for a Civo.
-func WithAPIURL(apiURL string) Option {
-	return func(c *Civo) error {
-		c.apiURL = apiURL
-		return nil
-	}
-}
-
-// client is an interface for the Civo API client.
-//
-//nolint:interfacebloat // the Civo API client has many methods
-type client interface {
-	ListInstances(page int, perPage int) (*civogo.PaginatedInstanceList, error)
-	ListSSHKeys() ([]civogo.SSHKey, error)
-	DeleteSSHKey(id string) (*civogo.SimpleResponse, error)
-	ListVolumes() ([]civogo.Volume, error)
-	DeleteVolume(id string) (*civogo.SimpleResponse, error)
-	ListKubernetesClusters() (*civogo.PaginatedKubernetesClusters, error)
-	DeleteKubernetesCluster(id string) (*civogo.SimpleResponse, error)
-	ListVolumesForCluster(clusterID string) ([]civogo.Volume, error)
-	ListNetworks() ([]civogo.Network, error)
-	FindNetwork(search string) (*civogo.Network, error)
-	DeleteNetwork(id string) (*civogo.SimpleResponse, error)
-	ListFirewalls() ([]civogo.Firewall, error)
-	DeleteFirewall(id string) (*civogo.SimpleResponse, error)
-	ListObjectStoreCredentials() (*civogo.PaginatedObjectStoreCredentials, error)
-	GetObjectStoreCredential(id string) (*civogo.ObjectStoreCredential, error)
-	DeleteObjectStoreCredential(id string) (*civogo.SimpleResponse, error)
-	ListObjectStores() (*civogo.PaginatedObjectstores, error)
-	DeleteObjectStore(id string) (*civogo.SimpleResponse, error)
-}
-
-var _ client = &civogo.Client{}
-
+// customLogger is a custom logger interface.
 type customLogger interface {
 	Errorf(format string, v ...interface{})
 	Infof(format string, v ...interface{})
 	Warnf(format string, v ...interface{})
 }
 
+// _ is a compile-time check to ensure that Civo implements
+// the customLogger interface.
 var _ customLogger = &logger.Logger{}
+
+// debuggableHTTPClient is an HTTP client that logs requests if
+// the HTTP_DEBUG environment variable is set.
+var debuggableHTTPClient = &http.Client{
+	Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		if os.Getenv("HTTP_DEBUG") == "" {
+			return http.DefaultTransport.RoundTrip(req)
+		}
+
+		log.Printf("Request: %s %s", req.Method, req.URL.String())
+		return http.DefaultTransport.RoundTrip(req)
+	}),
+}
+
+// roundTripperFunc is a function that implements the http.RoundTripper interface.
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+// RoundTrip implements the http.RoundTripper interface.
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 // New creates a new Civo with the given options.
 // It returns an error if the token or region is not set, or if it fails to create the underlying Civo API client.
@@ -139,20 +138,19 @@ func New(opts ...Option) (*Civo, error) {
 		c.apiURL = civoAPIURL
 	}
 
-	if c.context == nil {
-		c.context = context.Background()
-	}
-
 	if c.logger == nil {
 		c.logger = logger.None
 	}
 
-	civoClient, err := civogo.NewClientWithURL(c.token, c.apiURL, c.region)
+	client, err := sdk.New(
+		sdk.WithRegion(c.region),
+		sdk.WithJSONClient(debuggableHTTPClient, c.apiURL, c.token),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create new client: %w", err)
+		return nil, fmt.Errorf("unable to create Civo client: %w", err)
 	}
 
-	c.client = civoClient
+	c.client = client
 
 	return c, nil
 }
