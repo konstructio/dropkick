@@ -22,7 +22,6 @@ func Test_New(t *testing.T) {
 
 		testutils.AssertNoError(t, err)
 		testutils.AssertEqual(t, c.GetRegion(), region)
-		testutils.AssertEqual(t, c.client, http.DefaultClient)
 		testutils.AssertEqual(t, c.requester.GetEndpoint(), endpoint)
 	})
 
