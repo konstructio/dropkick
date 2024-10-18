@@ -33,7 +33,7 @@ func getDigitalOceanCommand() *cobra.Command {
 			opts.spacesSecretKey = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_SECRET_KEY", "SPACES_SECRET")
 			opts.spacesRegion = env.GetFirstNotEmpty("DIGITALOCEAN_SPACES_REGION", "SPACES_REGION")
 			quiet := cmd.Flags().Lookup("quiet").Value.String() == "true"
-			return runDigitalOcean(cmd.OutOrStderr(), opts, quiet)
+			return runDigitalOcean(cmd.Context(), cmd.OutOrStderr(), opts, quiet)
 		},
 	}
 
@@ -41,7 +41,7 @@ func getDigitalOceanCommand() *cobra.Command {
 	return cmd
 }
 
-func runDigitalOcean(output io.Writer, opts doOptions, quiet bool) error {
+func runDigitalOcean(ctx context.Context, output io.Writer, opts doOptions, quiet bool) error {
 	// Check token
 	if opts.token == "" {
 		return errors.New("required environment variable $DIGITALOCEAN_TOKEN not set")
@@ -68,10 +68,10 @@ func runDigitalOcean(output io.Writer, opts doOptions, quiet bool) error {
 
 	// Create DigitalOcean client
 	client, err := digitalocean.New(
+		ctx,
 		digitalocean.WithToken(opts.token),
 		digitalocean.WithS3Storage(opts.spacesAccessKey, opts.spacesSecretKey, opts.spacesRegion),
 		digitalocean.WithNuke(opts.nuke),
-		digitalocean.WithContext(context.Background()),
 		digitalocean.WithLogger(log),
 	)
 	if err != nil {
@@ -79,7 +79,7 @@ func runDigitalOcean(output io.Writer, opts doOptions, quiet bool) error {
 	}
 
 	// Cleanup resources
-	if err := client.NukeKubernetesClusters(); err != nil {
+	if err := client.NukeKubernetesClusters(ctx); err != nil {
 		return fmt.Errorf("unable to cleanup Kubernetes clusters: %w", err)
 	}
 
@@ -87,7 +87,7 @@ func runDigitalOcean(output io.Writer, opts doOptions, quiet bool) error {
 		return fmt.Errorf("unable to cleanup spaces storage: %w", err)
 	}
 
-	if err := client.NukeVolumes(); err != nil {
+	if err := client.NukeVolumes(ctx); err != nil {
 		return fmt.Errorf("unable to cleanup volumes: %w", err)
 	}
 

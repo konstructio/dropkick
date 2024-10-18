@@ -1,16 +1,17 @@
 package digitalocean
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/digitalocean/godo"
 	"github.com/konstructio/dropkick/internal/outputwriter"
 )
 
-func (d *DigitalOcean) NukeVolumes() error {
+func (d *DigitalOcean) NukeVolumes(ctx context.Context) error {
 	d.logger.Infof("listing volumes")
 
-	volumes, _, err := d.client.Storage.ListVolumes(d.context, &godo.ListVolumeParams{})
+	volumes, _, err := d.client.Storage.ListVolumes(ctx, &godo.ListVolumeParams{})
 	if err != nil {
 		return fmt.Errorf("unable to list volumes: %w", err)
 	}
@@ -22,7 +23,7 @@ func (d *DigitalOcean) NukeVolumes() error {
 
 		if d.nuke {
 			d.logger.Infof("deleting volume %q", volume.ID)
-			_, err := d.client.Storage.DeleteVolume(d.context, volume.ID)
+			_, err := d.client.Storage.DeleteVolume(ctx, volume.ID)
 			if err != nil {
 				return fmt.Errorf("unable to delete volume %s: %w", volume.ID, err)
 			}
