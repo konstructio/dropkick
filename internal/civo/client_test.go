@@ -123,7 +123,6 @@ func TestNew(t *testing.T) {
 		Opts       []Option
 		Token      string
 		Region     string
-		Context    context.Context
 		Logger     *logger.Logger
 		Nuke       bool
 		NameFilter string
@@ -133,7 +132,6 @@ func TestNew(t *testing.T) {
 			Name:       "all good",
 			Token:      "token",
 			Region:     "region",
-			Context:    context.Background(),
 			Logger:     logger.None,
 			Nuke:       true,
 			NameFilter: "filter",
@@ -160,11 +158,10 @@ func TestNew(t *testing.T) {
 			WantErr: true,
 		},
 		{
-			Name:    "missing context",
-			Token:   "token",
-			Region:  "region",
-			Context: nil,
-			Logger:  nil,
+			Name:   "missing context",
+			Token:  "token",
+			Region: "region",
+			Logger: nil,
 		},
 		{
 			Name:    "default logger",

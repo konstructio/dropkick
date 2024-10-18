@@ -1,6 +1,7 @@
 package digitalocean
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/digitalocean/godo"
@@ -10,13 +11,13 @@ import (
 // NukeKubernetesClusters deletes all Kubernetes clusters associated with the
 // DigitalOcean client. It returns an error if the deletion process encounters
 // any issues.
-func (d *DigitalOcean) NukeKubernetesClusters() error {
+func (d *DigitalOcean) NukeKubernetesClusters(ctx context.Context) error {
 	page := 1
 
 	for {
 		d.logger.Infof("listing Kubernetes clusters for page %d", page)
 
-		clusters, res, err := d.client.Kubernetes.List(d.context, &godo.ListOptions{
+		clusters, res, err := d.client.Kubernetes.List(ctx, &godo.ListOptions{
 			Page: page, PerPage: 50,
 		})
 		if err != nil {
@@ -31,7 +32,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 			// Delete the Kubernetes cluster
 			if d.nuke {
 				d.logger.Infof("deleting cluster %q", cluster.ID)
-				_, err := d.client.Kubernetes.Delete(d.context, cluster.ID)
+				_, err := d.client.Kubernetes.Delete(ctx, cluster.ID)
 				if err != nil {
 					return fmt.Errorf("unable to delete cluster %q: %w", cluster.ID, err)
 				}
@@ -40,7 +41,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 				d.logger.Warnf("refusing to delete cluster %q: nuke is not enabled", cluster.ID)
 			}
 
-			foo, _, err := d.client.Kubernetes.ListAssociatedResourcesForDeletion(d.context, cluster.ID)
+			foo, _, err := d.client.Kubernetes.ListAssociatedResourcesForDeletion(ctx, cluster.ID)
 			if err != nil {
 				return fmt.Errorf("unable to list associated resources for cluster %q: %w", cluster.ID, err)
 			}
@@ -51,7 +52,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 			for _, loadbalancer := range foo.LoadBalancers {
 				if d.nuke {
 					d.logger.Infof("deleting loadbalancer %q for cluster %q", loadbalancer.ID, cluster.ID)
-					_, err := d.client.LoadBalancers.Delete(d.context, loadbalancer.ID)
+					_, err := d.client.LoadBalancers.Delete(ctx, loadbalancer.ID)
 					if err != nil {
 						return fmt.Errorf("unable to delete cluster %q loadbalancer %q: %w", cluster.ID, loadbalancer.ID, err)
 					}
@@ -65,7 +66,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 			for _, volume := range foo.Volumes {
 				if d.nuke {
 					d.logger.Infof("deleting volume %q for cluster %q", volume.ID, cluster.ID)
-					_, err := d.client.Storage.DeleteVolume(d.context, volume.ID)
+					_, err := d.client.Storage.DeleteVolume(ctx, volume.ID)
 					if err != nil {
 						return fmt.Errorf("unable to delete cluster %q volume %q: %w", cluster.ID, volume.ID, err)
 					}
@@ -79,7 +80,7 @@ func (d *DigitalOcean) NukeKubernetesClusters() error {
 			for _, snapshot := range foo.VolumeSnapshots {
 				if d.nuke {
 					d.logger.Infof("deleting volume snapshot %q for cluster %q", snapshot.ID, cluster.ID)
-					_, err := d.client.Snapshots.Delete(d.context, snapshot.ID)
+					_, err := d.client.Snapshots.Delete(ctx, snapshot.ID)
 					if err != nil {
 						return fmt.Errorf("unable to delete cluster %q volume snapshot %q: %w", cluster.ID, snapshot.ID, err)
 					}
