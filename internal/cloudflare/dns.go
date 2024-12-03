@@ -18,15 +18,15 @@ func (c *Cloudflare) NukeDNSRecords(ctx context.Context) error {
 		return fmt.Errorf("unable to list records for domain %q: %w", c.zoneName, err)
 	}
 
-	records = filterRecords(records, c.subdomain)
+	filteredRecords := filterRecords(records, c.subdomain)
 
 	if c.subdomain != "" {
-		c.logger.Infof("found %d records for %q", len(records), fmt.Sprintf("%s.%s", c.subdomain, c.zoneName))
+		c.logger.Infof("found %d records for %q", len(filteredRecords), fmt.Sprintf("%s.%s", c.subdomain, c.zoneName))
 	} else {
-		c.logger.Infof("found %d records for %q", len(records), c.zoneName)
+		c.logger.Infof("found %d records for %q", len(filteredRecords), c.zoneName)
 	}
 
-	for _, r := range records {
+	for _, r := range filteredRecords {
 		if c.nuke {
 			c.logger.Infof("nuke enabled, deleting record %q - %q", r.Type, r.Name)
 			if err := c.client.DeleteDNSRecord(ctx, &cloudflarego.ResourceContainer{Identifier: c.zoneID}, r.ID); err != nil {
@@ -40,15 +40,17 @@ func (c *Cloudflare) NukeDNSRecords(ctx context.Context) error {
 	return nil
 }
 
+// fetch all txt records with values like "heritage=external-dns,external-dns/owner=default,external-dns/resource=ingress/argo/argo-server"
+// fetch all txt records with values like "heritage=external-dns,external-dns/owner=default,external-dns/resource"
+
 func filterRecords(records []cloudflarego.DNSRecord, subdomain string) []cloudflarego.DNSRecord {
-	var filteredRecords []cloudflarego.DNSRecord
+	filteredRecords := make([]cloudflarego.DNSRecord, 0, len(records))
 	aRecord := "A"
 	txtRecord := "TXT"
-	fmt.Println("subdomain: ", subdomain)
 
 	for _, r := range records {
 		if subdomain != "" {
-			if strings.Contains(r.Name, subdomain) && r.Type == txtRecord || r.Type == aRecord {
+			if strings.Contains(r.Name, subdomain) && (r.Type == txtRecord || r.Type == aRecord) {
 				filteredRecords = append(filteredRecords, r)
 			}
 		} else {
