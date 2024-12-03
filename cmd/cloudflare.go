@@ -58,7 +58,6 @@ func runCloudflare(ctx context.Context, output io.Writer, opts cloudflareOptions
 	}
 
 	client, err := cloudflare.New(
-		ctx,
 		cloudflare.WithToken(token),
 		cloudflare.WithZoneName(opts.domain),
 		cloudflare.WithSubdomain(opts.subdomain),

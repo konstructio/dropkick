@@ -11,20 +11,6 @@ import (
 func (c *Cloudflare) NukeDNSRecords(ctx context.Context) error {
 	c.logger.Infof("removing dns records for domain %q", c.zoneName)
 
-	zones, err := c.client.ListZones(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to list zones: %w", err)
-	}
-
-	for _, zone := range zones {
-		if zone.Name == c.zoneName {
-			c.zoneID = zone.ID
-		}
-	}
-	if c.zoneID == "" {
-		return fmt.Errorf("unable to find zone ID for domain: %q", c.zoneName)
-	}
-
 	records, _, err := c.client.ListDNSRecords(ctx, &cloudflarego.ResourceContainer{
 		Identifier: c.zoneID,
 	}, cloudflarego.ListDNSRecordsParams{})
