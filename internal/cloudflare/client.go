@@ -64,7 +64,7 @@ func WithNuke(nuke bool) Option {
 }
 
 // New creates a new Cloudflare with the given options.
-// It returns an error if the token or region is not set, or if it fails to
+// It returns an error if the token is not set, or if it fails to
 // create the underlying Cloudflare API client.
 func New(opts ...Option) (*Cloudflare, error) {
 	c := &Cloudflare{}
