@@ -9,7 +9,6 @@ import (
 
 	"github.com/konstructio/dropkick/internal/cloudflare"
 	"github.com/konstructio/dropkick/internal/logger"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -37,9 +36,7 @@ func getCloudflareCommand() *cobra.Command {
 	cloudflareCmd.Flags().StringVar(&opts.domain, "domain", "", "the cloudflare apex domain to clean")
 	cloudflareCmd.Flags().StringVar(&opts.subdomain, "subdomain", "", "the subdomain to clean")
 
-	if err := cloudflareCmd.MarkFlagRequired("domain"); err != nil {
-		log.Fatal(err)
-	}
+	cloudflareCmd.MarkFlagRequired("domain")
 
 	return cloudflareCmd
 }
