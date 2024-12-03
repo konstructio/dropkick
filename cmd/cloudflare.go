@@ -25,7 +25,6 @@ func getCloudflareCommand() *cobra.Command {
 	cloudflareCmd := &cobra.Command{
 		Use:   "cloudflare",
 		Short: "clean cloudflare dns resources",
-		Long:  `clean cloudflare dns resources`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.quiet = cmd.Flags().Lookup("quiet").Value.String() == "true"
 			return runCloudflare(cmd.Context(), cmd.OutOrStderr(), opts, os.Getenv("CLOUDFLARE_API_TOKEN"))
