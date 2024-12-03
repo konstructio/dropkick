@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	cloudflare "github.com/konstructio/dropkick/internal/cloudflare"
+	"github.com/konstructio/dropkick/internal/cloudflare"
 	"github.com/konstructio/dropkick/internal/logger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
