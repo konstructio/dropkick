@@ -20,6 +20,13 @@ type Cloudflare struct {
 	logger    *logger.Logger    // The logger instance.
 }
 
+func (c *Cloudflare) getFullName() string {
+	if c.subdomain != "" {
+		return fmt.Sprintf("%s.%s", c.subdomain, c.zoneName)
+	}
+	return c.zoneName
+}
+
 // Option is a function that configures a Cloudflare.
 type Option func(*Cloudflare) error
 
