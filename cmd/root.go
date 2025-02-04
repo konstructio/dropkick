@@ -22,6 +22,7 @@ func Execute() {
 	// Add subcommands
 	rootCmd.AddCommand(getCivoCommand())
 	rootCmd.AddCommand(getDigitalOceanCommand())
+	rootCmd.AddCommand(getVersionCommand())
 
 	// Configure a global flag for "--quiet"
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress output from processing while keeping deletion messages to stdout")
