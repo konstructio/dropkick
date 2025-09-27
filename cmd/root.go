@@ -22,6 +22,7 @@ func Execute() {
 	// Add subcommands
 	rootCmd.AddCommand(getCivoCommand())
 	rootCmd.AddCommand(getDigitalOceanCommand())
+	rootCmd.AddCommand(getCloudflareCommand())
 	rootCmd.AddCommand(getVersionCommand())
 
 	// Configure a global flag for "--quiet"
